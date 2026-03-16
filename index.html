@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HR培训台账系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+</head>
+<body class="bg-gray-100">
+  <div class="max-w-4xl mx-auto p-4">
+    <!-- 登录模块 -->
+    <div id="login" class="mt-10 bg-white p-8 rounded-lg shadow">
+      <h1 class="text-2xl font-bold text-center mb-6">HR培训台账系统</h1>
+      <div class="mb-4">
+        <label class="block mb-2">账号</label>
+        <input type="text" id="username" class="w-full px-4 py-2 border rounded" value="admin">
+      </div>
+      <div class="mb-6">
+        <label class="block mb-2">密码</label>
+        <input type="password" id="password" class="w-full px-4 py-2 border rounded" value="123456">
+      </div>
+      <button onclick="login()" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">登录</button>
+    </div>
+
+    <!-- 员工台账模块 -->
+    <div id="employee-list" class="mt-10 bg-white p-8 rounded-lg shadow hidden">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold">员工台账</h2>
+        <button onclick="showAddEmployee()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">新增员工</button>
+      </div>
+      <table class="w-full border-collapse">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="border p-2">姓名</th>
+            <th class="border p-2">身份证号</th>
+            <th class="border p-2">部门</th>
+            <th class="border p-2">操作</th>
+          </tr>
+        </thead>
+        <tbody id="employee-table-body">
+          <!-- 员工数据会动态加载 -->
+        </tbody>
+      </table>
+
+      <!-- 新增/编辑员工弹窗 -->
+      <div id="employee-modal" class="fixed top-0 left-0 w-full h-full bg-black/50 flex justify-center items-center hidden">
+        <div class="bg-white p-8 rounded-lg w-1/3">
+          <h3 class="text-lg font-bold mb-4" id="modal-title">新增员工</h3>
+          <input type="hidden" id="employee-id">
+          <div class="mb-4">
+            <label class="block mb-2">姓名</label>
+            <input type="text" id="employee-name" class="w-full px-4 py-2 border rounded">
+          </div>
+          <div class="mb-4">
+            <label class="block mb-2">身份证号</label>
+            <input type="text" id="employee-idcard" class="w-full px-4 py-2 border rounded">
+          </div>
+          <div class="mb-4">
+            <label class="block mb-2">部门</label>
+            <input type="text" id="employee-dept" class="w-full px-4 py-2 border rounded">
+          </div>
+          <div class="flex justify-end gap-2">
+            <button onclick="closeModal()" class="px-4 py-2 border rounded hover:bg-gray-100">取消</button>
+            <button onclick="saveEmployee()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 已填好你的Supabase信息（不用改）
+    const supabaseUrl = 'https://fgscptvyyxhqkbpriukq.supabase.co';
+    const supabaseKey = 'sb_publishable_FKN4uoXGNghAUjhjAKtG7Q_VmCzuVJW';
+
+    // 创建Supabase客户端
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // 登录逻辑
+    async function login() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      const { data: user } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .single();
+
+      if (user) {
+        // 简化验证（适配默认密码123456）
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('employee-list').classList.remove('hidden');
+        loadEmployees(); // 加载员工数据
+      } else {
+        alert('账号或密码错误！请检查Supabase是否已创建users表并插入admin账号');
+      }
+    }
+
+    // 加载员工列表
+    async function loadEmployees() {
+      const { data: employees, error } = await supabase
+        .from('employees')
+        .select('*');
+      
+      if (error) {
+        alert('加载员工数据失败：' + error.message);
+        return;
+      }
+
+      const tbody = document.getElementById('employee-table-body');
+      tbody.innerHTML = '';
+      if (employees && employees.length > 0) {
+        employees.forEach(emp => {
+          tbody.innerHTML += `
+            <tr>
+              <td class="border p-2">${emp.name || ''}</td>
+              <td class="border p-2">${emp.id_card || ''}</td>
+              <td class="border p-2">${emp.department || ''}</td>
+              <td class="border p-2">
+                <button onclick="editEmployee('${emp.id}', '${emp.name}', '${emp.id_card}', '${emp.department}')" class="px-2 py-1 bg-yellow-500 text-white rounded">编辑</button>
+                <button onclick="deleteEmployee('${emp.id}')" class="px-2 py-1 bg-red-500 text-white rounded ml-2">删除</button>
+              </td>
+            </tr>
+          `;
+        });
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="border p-2 text-center">暂无员工数据，点击「新增员工」添加</td></tr>';
+      }
+    }
+
+    // 新增员工弹窗
+    function showAddEmployee() {
+      document.getElementById('modal-title').innerText = '新增员工';
+      document.getElementById('employee-id').value = '';
+      document.getElementById('employee-name').value = '';
+      document.getElementById('employee-idcard').value = '';
+      document.getElementById('employee-dept').value = '';
+      document.getElementById('employee-modal').classList.remove('hidden');
+    }
+
+    // 编辑员工
+    function editEmployee(id, name, idCard, dept) {
+      document.getElementById('modal-title').innerText = '编辑员工';
+      document.getElementById('employee-id').value = id;
+      document.getElementById('employee-name').value = name;
+      document.getElementById('employee-idcard').value = idCard;
+      document.getElementById('employee-dept').value = dept;
+      document.getElementById('employee-modal').classList.remove('hidden');
+    }
+
+    // 关闭弹窗
+    function closeModal() {
+      document.getElementById('employee-modal').classList.add('hidden');
+    }
+
+    // 保存员工
+    async function saveEmployee() {
+      const id = document.getElementById('employee-id').value;
+      const name = document.getElementById('employee-name').value.trim();
+      const idCard = document.getElementById('employee-idcard').value.trim();
+      const dept = document.getElementById('employee-dept').value.trim();
+
+      if (!name || !idCard || !dept) {
+        alert('姓名、身份证号、部门不能为空！');
+        return;
+      }
+
+      try {
+        if (id) {
+          // 编辑
+          const { error } = await supabase
+            .from('employees')
+            .update({ name, id_card: idCard, department: dept })
+            .eq('id', id);
+          if (error) throw error;
+          alert('员工编辑成功！');
+        } else {
+          // 新增
+          const { error } = await supabase
+            .from('employees')
+            .insert({ name, id_card: idCard, department: dept });
+          if (error) throw error;
+          alert('员工新增成功！');
+        }
+        closeModal();
+        loadEmployees(); // 刷新列表
+      } catch (err) {
+        alert('操作失败：' + err.message + '，请检查Supabase数据表是否创建正确');
+      }
+    }
+
+    // 删除员工
+    async function deleteEmployee(id) {
+      if (confirm('确定删除该员工吗？删除后无法恢复！')) {
+        try {
+          const { error } = await supabase
+            .from('employees')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+          alert('员工删除成功！');
+          loadEmployees(); // 刷新列表
+        } catch (err) {
+          alert('删除失败：' + err.message);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
