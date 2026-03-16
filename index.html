@@ -413,7 +413,8 @@
       setup() {
         // Supabase配置
         const supabaseUrl = 'https://fgscptvyyxhqkbpriukq.supabase.co';
-        const supabaseKey = 'sb_publishable_FKN4uoXGNghAUjhjAKtG7Q_VmCzuVJW';
+        // 注意：这里替换成你自己的Supabase anon key（在Supabase后台→Settings→API→anon/public key）
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnc2NwdHZ5eXhocWticHJpdWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTExMDAwMDAsImV4cCI6MjAyNjY3NjAwMH0.XXXX'; // 替换成你的真实key
         let supabase;
 
         // 基础状态
@@ -490,38 +491,50 @@
           }
         };
 
-        // 登录处理
+        // 登录处理（修复核心）
         const handleLogin = async () => {
           try {
             loading.value = true;
             
-            // 验证表单
-            await loginFormRef.value.validate();
+            // 简单表单验证
+            if (!loginForm.username || !loginForm.password) {
+              ElMessage.error('账号和密码不能为空！');
+              loading.value = false;
+              return;
+            }
             
+            // 修复查询逻辑：去掉single()，兼容数组返回
             const { data: user, error } = await supabase
               .from('users')
               .select('*')
-              .eq('username', loginForm.username)
-              .eq('password', loginForm.password)
-              .single();
+              .eq('username', loginForm.username.trim())
+              .eq('password', loginForm.password.trim());
 
-            if (error || !user) {
+            // 调试信息（F12查看）
+            console.log('登录查询-数据：', user);
+            console.log('登录查询-错误：', error);
+            
+            if (error) {
+              ElMessage.error('数据库查询失败：' + error.message);
+              return;
+            }
+            
+            if (!user || user.length === 0) {
               ElMessage.error('账号或密码错误！');
               return;
             }
 
+            // 登录成功
             isLogin.value = true;
             ElMessage.success('登录成功！');
             
-            // 加载所有数据
+            // 加载数据
             loadEmployeeList();
             loadRecruitList();
             loadTrainingList();
             
           } catch (err) {
-            if (err.name !== 'ValidationError') {
-              ElMessage.error('登录失败：' + err.message);
-            }
+            ElMessage.error('登录异常：' + (err.message || err));
           } finally {
             loading.value = false;
           }
@@ -534,19 +547,16 @@
         };
 
         // ========== 员工档案管理 ==========
-        // 加载员工列表
         const loadEmployeeList = async () => {
           try {
             tableLoading.value = true;
             
             let query = supabase.from('employees').select('*', { count: 'exact' });
             
-            // 搜索筛选
             if (employeeSearch.value) {
               query = query.or(`name.ilike.%${employeeSearch.value}%,id_card.ilike.%${employeeSearch.value}%,department.ilike.%${employeeSearch.value}%`);
             }
             
-            // 分页
             query = query.range(
               (employeePage.current - 1) * employeePage.size,
               employeePage.current * employeePage.size - 1
@@ -567,29 +577,30 @@
           }
         };
 
-        // 打开员工弹窗
         const openEmployeeModal = () => {
           employeeModalTitle.value = '新增员工';
-          employeeForm.value = {
-            status: '在职',
-            entry_date: new Date().toISOString().split('T')[0]
-          };
+          employeeForm.name = '';
+          employeeForm.id_card = '';
+          employeeForm.department = '';
+          employeeForm.position = '';
+          employeeForm.phone = '';
+          employeeForm.email = '';
+          employeeForm.entry_date = new Date().toISOString().split('T')[0];
+          employeeForm.status = '在职';
+          employeeForm.remark = '';
           employeeModalVisible.value = true;
         };
 
-        // 编辑员工
         const editEmployee = (row) => {
           employeeModalTitle.value = '编辑员工';
           Object.assign(employeeForm, row);
           employeeModalVisible.value = true;
         };
 
-        // 保存员工
         const saveEmployee = async () => {
           try {
             tableLoading.value = true;
             
-            // 验证表单
             await employeeFormRef.value.validate();
             
             if (employeeForm.id) {
@@ -597,8 +608,15 @@
               const { error } = await supabase
                 .from('employees')
                 .update({
-                  ...employeeForm,
-                  updated_at: new Date()
+                  name: employeeForm.name,
+                  id_card: employeeForm.id_card,
+                  department: employeeForm.department,
+                  position: employeeForm.position,
+                  phone: employeeForm.phone,
+                  email: employeeForm.email,
+                  entry_date: employeeForm.entry_date,
+                  status: employeeForm.status,
+                  remark: employeeForm.remark
                 })
                 .eq('id', employeeForm.id);
               
@@ -608,10 +626,17 @@
               // 新增
               const { error } = await supabase
                 .from('employees')
-                .insert({
-                  ...employeeForm,
-                  created_at: new Date()
-                });
+                .insert([{
+                  name: employeeForm.name,
+                  id_card: employeeForm.id_card,
+                  department: employeeForm.department,
+                  position: employeeForm.position,
+                  phone: employeeForm.phone,
+                  email: employeeForm.email,
+                  entry_date: employeeForm.entry_date,
+                  status: employeeForm.status,
+                  remark: employeeForm.remark
+                }]);
               
               if (error) throw error;
               ElMessage.success('员工信息新增成功！');
@@ -629,7 +654,6 @@
           }
         };
 
-        // 删除员工
         const deleteEmployee = async (id) => {
           try {
             await ElMessageBox.confirm(
@@ -659,7 +683,6 @@
           }
         };
 
-        // 导出员工Excel
         const exportEmployeeExcel = () => {
           try {
             if (employeeList.value.length === 0) {
@@ -667,7 +690,6 @@
               return;
             }
             
-            // 准备数据
             const exportData = employeeList.value.map(item => ({
               '姓名': item.name,
               '身份证号': item.id_card,
@@ -680,12 +702,10 @@
               '备注': item.remark || ''
             }));
             
-            // 创建工作簿
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, '员工档案');
             
-            // 导出文件
             XLSX.writeFile(wb, `员工档案台账_${new Date().toLocaleDateString()}.xlsx`);
             ElMessage.success('Excel导出成功！');
             
@@ -695,7 +715,6 @@
         };
 
         // ========== 招聘管理 ==========
-        // 加载招聘列表
         const loadRecruitList = async () => {
           try {
             tableLoading.value = true;
@@ -726,7 +745,6 @@
           }
         };
 
-        // 获取招聘状态标签类型
         const getStatusTagType = (status) => {
           const typeMap = {
             '待面试': 'info',
@@ -738,29 +756,30 @@
           return typeMap[status] || 'info';
         };
 
-        // 打开招聘弹窗
         const openRecruitModal = () => {
           recruitModalTitle.value = '新增候选人';
-          recruitForm.value = {
-            status: '待面试',
-            interview_date: new Date().toISOString().split('T')[0]
-          };
+          recruitForm.name = '';
+          recruitForm.position = '';
+          recruitForm.phone = '';
+          recruitForm.email = '';
+          recruitForm.education = '';
+          recruitForm.work_years = '';
+          recruitForm.interview_date = new Date().toISOString().split('T')[0];
+          recruitForm.status = '待面试';
+          recruitForm.remark = '';
           recruitModalVisible.value = true;
         };
 
-        // 编辑招聘
         const editRecruit = (row) => {
           recruitModalTitle.value = '编辑候选人';
           Object.assign(recruitForm, row);
           recruitModalVisible.value = true;
         };
 
-        // 保存招聘
         const saveRecruit = async () => {
           try {
             tableLoading.value = true;
             
-            // 验证表单
             await recruitFormRef.value.validate();
             
             if (recruitForm.id) {
@@ -768,8 +787,15 @@
               const { error } = await supabase
                 .from('recruitment')
                 .update({
-                  ...recruitForm,
-                  updated_at: new Date()
+                  name: recruitForm.name,
+                  position: recruitForm.position,
+                  phone: recruitForm.phone,
+                  email: recruitForm.email,
+                  education: recruitForm.education,
+                  work_years: recruitForm.work_years,
+                  interview_date: recruitForm.interview_date,
+                  status: recruitForm.status,
+                  remark: recruitForm.remark
                 })
                 .eq('id', recruitForm.id);
               
@@ -779,10 +805,17 @@
               // 新增
               const { error } = await supabase
                 .from('recruitment')
-                .insert({
-                  ...recruitForm,
-                  created_at: new Date()
-                });
+                .insert([{
+                  name: recruitForm.name,
+                  position: recruitForm.position,
+                  phone: recruitForm.phone,
+                  email: recruitForm.email,
+                  education: recruitForm.education,
+                  work_years: recruitForm.work_years,
+                  interview_date: recruitForm.interview_date,
+                  status: recruitForm.status,
+                  remark: recruitForm.remark
+                }]);
               
               if (error) throw error;
               ElMessage.success('候选人信息新增成功！');
@@ -800,7 +833,6 @@
           }
         };
 
-        // 删除招聘
         const deleteRecruit = async (id) => {
           try {
             await ElMessageBox.confirm(
@@ -830,7 +862,6 @@
           }
         };
 
-        // 导出招聘Excel
         const exportRecruitExcel = () => {
           try {
             if (recruitList.value.length === 0) {
@@ -863,7 +894,6 @@
         };
 
         // ========== 培训记录管理 ==========
-        // 加载培训记录
         const loadTrainingList = async () => {
           try {
             tableLoading.value = true;
@@ -894,29 +924,29 @@
           }
         };
 
-        // 打开培训弹窗
         const openTrainingModal = () => {
           trainingModalTitle.value = '新增培训记录';
-          trainingForm.value = {
-            attendance: '出勤',
-            training_date: new Date().toISOString().split('T')[0]
-          };
+          trainingForm.employee_name = '';
+          trainingForm.course_name = '';
+          trainingForm.training_date = new Date().toISOString().split('T')[0];
+          trainingForm.attendance = '出勤';
+          trainingForm.score = '';
+          trainingForm.certificate = '';
+          trainingForm.trainer = '';
+          trainingForm.remark = '';
           trainingModalVisible.value = true;
         };
 
-        // 编辑培训
         const editTraining = (row) => {
           trainingModalTitle.value = '编辑培训记录';
           Object.assign(trainingForm, row);
           trainingModalVisible.value = true;
         };
 
-        // 保存培训
         const saveTraining = async () => {
           try {
             tableLoading.value = true;
             
-            // 验证表单
             await trainingFormRef.value.validate();
             
             if (trainingForm.id) {
@@ -924,8 +954,14 @@
               const { error } = await supabase
                 .from('training_records')
                 .update({
-                  ...trainingForm,
-                  updated_at: new Date()
+                  employee_name: trainingForm.employee_name,
+                  course_name: trainingForm.course_name,
+                  training_date: trainingForm.training_date,
+                  attendance: trainingForm.attendance,
+                  score: trainingForm.score,
+                  certificate: trainingForm.certificate,
+                  trainer: trainingForm.trainer,
+                  remark: trainingForm.remark
                 })
                 .eq('id', trainingForm.id);
               
@@ -935,10 +971,16 @@
               // 新增
               const { error } = await supabase
                 .from('training_records')
-                .insert({
-                  ...trainingForm,
-                  created_at: new Date()
-                });
+                .insert([{
+                  employee_name: trainingForm.employee_name,
+                  course_name: trainingForm.course_name,
+                  training_date: trainingForm.training_date,
+                  attendance: trainingForm.attendance,
+                  score: trainingForm.score,
+                  certificate: trainingForm.certificate,
+                  trainer: trainingForm.trainer,
+                  remark: trainingForm.remark
+                }]);
               
               if (error) throw error;
               ElMessage.success('培训记录新增成功！');
@@ -956,7 +998,6 @@
           }
         };
 
-        // 删除培训
         const deleteTraining = async (id) => {
           try {
             await ElMessageBox.confirm(
@@ -986,7 +1027,6 @@
           }
         };
 
-        // 导出培训Excel
         const exportTrainingExcel = () => {
           try {
             if (trainingList.value.length === 0) {
@@ -1063,7 +1103,7 @@
           loadTrainingList();
         };
 
-        // 页面加载完成初始化
+        // 初始化
         onMounted(() => {
           initSupabase();
         });
