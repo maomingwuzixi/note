@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HR培训台账系统</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+  <!-- 改用更稳定的Supabase CDN地址，确保加载完整 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
 </head>
 <body class="bg-gray-100">
   <div class="max-w-4xl mx-auto p-4">
@@ -70,40 +71,86 @@
   </div>
 
   <script>
-    // 1. 先创建Supabase客户端（移到最前面，确保先初始化）
-    const supabaseUrl = 'https://fgscptvyyxhqkbpriukq.supabase.co';
-    const supabaseKey = 'sb_publishable_FKN4uoXGNghAUjhjAKtG7Q_VmCzuVJW';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    // 全局变量先声明
+    let supabase;
 
-    // 2. 所有函数定义（在supabase之后）
+    // 等待页面和CDN完全加载后再初始化
+    document.addEventListener('DOMContentLoaded', async function() {
+      try {
+        // 直接使用Supabase构造函数（兼容所有浏览器）
+        const { createClient } = window.supabase;
+        // 你的Supabase配置
+        const supabaseUrl = 'https://fgscptvyyxhqkbpriukq.supabase.co';
+        const supabaseKey = 'sb_publishable_FKN4uoXGNghAUjhjAKtG7Q_VmCzuVJW';
+        // 初始化Supabase
+        supabase = createClient(supabaseUrl, supabaseKey);
+        console.log('✅ Supabase初始化成功');
+
+        // 绑定所有按钮事件
+        bindEvents();
+      } catch (err) {
+        alert('❌ Supabase初始化失败：' + err.message);
+        console.error('Supabase初始化错误：', err);
+      }
+    });
+
+    // 绑定按钮事件
+    function bindEvents() {
+      // 登录按钮
+      document.getElementById('login-btn').addEventListener('click', login);
+      // 新增员工按钮
+      document.getElementById('add-emp-btn').addEventListener('click', showAddEmployee);
+      // 取消按钮
+      document.getElementById('cancel-btn').addEventListener('click', closeModal);
+      // 保存按钮
+      document.getElementById('save-btn').addEventListener('click', saveEmployee);
+    }
+
     // 登录逻辑
     async function login() {
+      if (!supabase) {
+        alert('Supabase还未初始化，请刷新页面重试！');
+        return;
+      }
+
       try {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         
+        // 查询管理员账号
         const { data: user, error } = await supabase
           .from('users')
           .select('*')
           .eq('username', username)
           .single();
 
-        if (error) throw error;
-        if (user) {
-          // 登录成功
-          document.getElementById('login').classList.add('hidden');
-          document.getElementById('employee-list').classList.remove('hidden');
-          loadEmployees(); // 加载员工数据
-        } else {
-          alert('账号不存在！');
+        if (error) {
+          if (error.code === 'PGRST116') {
+            alert('❌ 账号不存在！请检查Supabase是否已创建admin账号');
+          } else {
+            alert('❌ 登录失败：' + error.message);
+          }
+          return;
         }
+
+        // 登录成功
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('employee-list').classList.remove('hidden');
+        loadEmployees(); // 加载员工数据
+        alert('✅ 登录成功！');
+
       } catch (err) {
-        alert('登录失败：' + err.message + '\n请检查：1.Supabase表是否创建 2.是否有admin账号 3.网络是否正常');
+        alert('❌ 登录异常：' + err.message);
       }
     }
 
     // 加载员工列表
     async function loadEmployees() {
+      if (!supabase) {
+        alert('Supabase还未初始化，请刷新页面重试！');
+        return;
+      }
+
       try {
         const { data: employees, error } = await supabase
           .from('employees')
@@ -113,6 +160,7 @@
 
         const tbody = document.getElementById('employee-table-body');
         tbody.innerHTML = '';
+        
         if (employees && employees.length > 0) {
           employees.forEach(emp => {
             tbody.innerHTML += `
@@ -130,8 +178,9 @@
         } else {
           tbody.innerHTML = '<tr><td colspan="4" class="border p-2 text-center">暂无员工数据，点击「新增员工」添加</td></tr>';
         }
+
       } catch (err) {
-        alert('加载员工数据失败：' + err.message);
+        alert('❌ 加载员工数据失败：' + err.message);
       }
     }
 
@@ -162,6 +211,11 @@
 
     // 保存员工
     async function saveEmployee() {
+      if (!supabase) {
+        alert('Supabase还未初始化，请刷新页面重试！');
+        return;
+      }
+
       try {
         const id = document.getElementById('employee-id').value;
         const name = document.getElementById('employee-name').value.trim();
@@ -169,61 +223,60 @@
         const dept = document.getElementById('employee-dept').value.trim();
 
         if (!name || !idCard || !dept) {
-          alert('姓名、身份证号、部门不能为空！');
+          alert('❌ 姓名、身份证号、部门不能为空！');
           return;
         }
 
         if (id) {
-          // 编辑
+          // 编辑员工
           const { error } = await supabase
             .from('employees')
             .update({ name, id_card: idCard, department: dept })
             .eq('id', id);
+          
           if (error) throw error;
-          alert('员工编辑成功！');
+          alert('✅ 员工编辑成功！');
         } else {
-          // 新增
+          // 新增员工
           const { error } = await supabase
             .from('employees')
             .insert({ name, id_card: idCard, department: dept });
+          
           if (error) throw error;
-          alert('员工新增成功！');
+          alert('✅ 员工新增成功！');
         }
+
         closeModal();
         loadEmployees(); // 刷新列表
+
       } catch (err) {
-        alert('操作失败：' + err.message);
+        alert('❌ 操作失败：' + err.message);
       }
     }
 
     // 删除员工
     async function deleteEmployee(id) {
-      if (confirm('确定删除该员工吗？删除后无法恢复！')) {
+      if (!supabase) {
+        alert('Supabase还未初始化，请刷新页面重试！');
+        return;
+      }
+
+      if (confirm('⚠️ 确定删除该员工吗？删除后无法恢复！')) {
         try {
           const { error } = await supabase
             .from('employees')
             .delete()
             .eq('id', id);
+          
           if (error) throw error;
-          alert('员工删除成功！');
+          alert('✅ 员工删除成功！');
           loadEmployees(); // 刷新列表
+
         } catch (err) {
-          alert('删除失败：' + err.message);
+          alert('❌ 删除失败：' + err.message);
         }
       }
     }
-
-    // 3. 页面加载完成后绑定事件（避免提前触发）
-    window.onload = function() {
-      // 绑定登录按钮
-      document.getElementById('login-btn').addEventListener('click', login);
-      // 绑定新增员工按钮
-      document.getElementById('add-emp-btn').addEventListener('click', showAddEmployee);
-      // 绑定取消按钮
-      document.getElementById('cancel-btn').addEventListener('click', closeModal);
-      // 绑定保存按钮
-      document.getElementById('save-btn').addEventListener('click', saveEmployee);
-    };
   </script>
 </body>
 </html>
