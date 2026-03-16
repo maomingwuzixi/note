@@ -3,280 +3,1059 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HR培训台账系统</title>
+  <title>HR全流程台账管理系统</title>
+  <!-- Element Plus 样式 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css">
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 改用更稳定的Supabase CDN地址，确保加载完整 -->
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+  <!-- Element Plus -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus/dist/index.full.js"></script>
+  <!-- Excel导出 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- 图标 -->
+  <script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue/dist/index.iife.min.js"></script>
 </head>
-<body class="bg-gray-100">
-  <div class="max-w-4xl mx-auto p-4">
-    <!-- 登录模块 -->
-    <div id="login" class="mt-10 bg-white p-8 rounded-lg shadow">
-      <h1 class="text-2xl font-bold text-center mb-6">HR培训台账系统</h1>
-      <div class="mb-4">
-        <label class="block mb-2">账号</label>
-        <input type="text" id="username" class="w-full px-4 py-2 border rounded" value="admin">
-      </div>
-      <div class="mb-6">
-        <label class="block mb-2">密码</label>
-        <input type="password" id="password" class="w-full px-4 py-2 border rounded" value="123456">
-      </div>
-      <button id="login-btn" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">登录</button>
-    </div>
+<body class="bg-gray-50 min-h-screen">
+  <div id="app" class="max-w-7xl mx-auto p-4">
+    <!-- 登录页面 -->
+    <el-dialog v-model="loginVisible" title="HR台账管理系统" width="400px" center :close-on-click-modal="false">
+      <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="80px">
+        <el-form-item label="账号" prop="username">
+          <el-input v-model="loginForm.username" placeholder="请输入账号"></el-input>
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input v-model="loginForm.password" type="password" placeholder="请输入密码"></el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleLogin" class="w-full">登录</el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog>
 
-    <!-- 员工台账模块 -->
-    <div id="employee-list" class="mt-10 bg-white p-8 rounded-lg shadow hidden">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold">员工台账</h2>
-        <button id="add-emp-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">新增员工</button>
-      </div>
-      <table class="w-full border-collapse">
-        <thead>
-          <tr class="bg-gray-200">
-            <th class="border p-2">姓名</th>
-            <th class="border p-2">身份证号</th>
-            <th class="border p-2">部门</th>
-            <th class="border p-2">操作</th>
-          </tr>
-        </thead>
-        <tbody id="employee-table-body">
-          <!-- 员工数据会动态加载 -->
-        </tbody>
-      </table>
+    <!-- 主页面 -->
+    <div v-if="isLogin" class="mt-4">
+      <!-- 顶部导航 -->
+      <el-menu :default-active="activeTab" mode="horizontal" background-color="#fff" text-color="#333" active-text-color="#409eff">
+        <el-menu-item index="employee">员工档案台账</el-menu-item>
+        <el-menu-item index="recruit">招聘管理台账</el-menu-item>
+        <el-menu-item index="training">培训记录台账</el-menu-item>
+        <el-menu-item index="course">培训课程管理</el-menu-item>
+        <el-menu-item index="statistics" class="ml-auto">数据统计</el-menu-item>
+        <el-menu-item index="logout" @click="handleLogout">退出登录</el-menu-item>
+      </el-menu>
 
-      <!-- 新增/编辑员工弹窗 -->
-      <div id="employee-modal" class="fixed top-0 left-0 w-full h-full bg-black/50 flex justify-center items-center hidden">
-        <div class="bg-white p-8 rounded-lg w-1/3">
-          <h3 class="text-lg font-bold mb-4" id="modal-title">新增员工</h3>
-          <input type="hidden" id="employee-id">
-          <div class="mb-4">
-            <label class="block mb-2">姓名</label>
-            <input type="text" id="employee-name" class="w-full px-4 py-2 border rounded">
-          </div>
-          <div class="mb-4">
-            <label class="block mb-2">身份证号</label>
-            <input type="text" id="employee-idcard" class="w-full px-4 py-2 border rounded">
-          </div>
-          <div class="mb-4">
-            <label class="block mb-2">部门</label>
-            <input type="text" id="employee-dept" class="w-full px-4 py-2 border rounded">
-          </div>
-          <div class="flex justify-end gap-2">
-            <button id="cancel-btn" class="px-4 py-2 border rounded hover:bg-gray-100">取消</button>
-            <button id="save-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
-          </div>
-        </div>
+      <!-- 员工档案台账 -->
+      <div v-show="activeTab === 'employee'" class="mt-6">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="flex justify-between items-center">
+              <span class="text-lg font-bold">员工档案台账</span>
+              <div>
+                <el-input v-model="employeeSearch" placeholder="搜索姓名/身份证/部门" style="width: 300px;" @input="handleEmployeeSearch" clearable></el-input>
+                <el-button type="primary" icon="Plus" @click="openEmployeeModal">新增员工</el-button>
+                <el-button type="success" icon="Download" @click="exportEmployeeExcel">导出Excel</el-button>
+              </div>
+            </div>
+          </template>
+
+          <el-table :data="employeeList" border stripe :loading="loading" style="width: 100%;">
+            <el-table-column prop="name" label="姓名" min-width="100"></el-table-column>
+            <el-table-column prop="id_card" label="身份证号" min-width="180"></el-table-column>
+            <el-table-column prop="department" label="部门" min-width="120"></el-table-column>
+            <el-table-column prop="position" label="职位" min-width="120"></el-table-column>
+            <el-table-column prop="phone" label="手机号" min-width="130"></el-table-column>
+            <el-table-column prop="email" label="邮箱" min-width="200"></el-table-column>
+            <el-table-column prop="entry_date" label="入职日期" min-width="120"></el-table-column>
+            <el-table-column label="操作" min-width="180">
+              <template #default="scope">
+                <el-button type="primary" size="small" @click="editEmployee(scope.row)">编辑</el-button>
+                <el-button type="danger" size="small" @click="deleteEmployee(scope.row.id)">删除</el-button>
+                <el-button type="info" size="small" @click="viewTrainingRecord(scope.row)">培训记录</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <el-pagination 
+            @size-change="handleEmployeeSizeChange"
+            @current-change="handleEmployeeCurrentChange"
+            :current-page="employeePage.current"
+            :page-sizes="[10, 20, 50, 100]"
+            :page-size="employeePage.size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="employeeTotal"
+            class="mt-4 flex justify-center"
+          >
+          </el-pagination>
+        </el-card>
       </div>
+
+      <!-- 招聘管理台账 -->
+      <div v-show="activeTab === 'recruit'" class="mt-6">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="flex justify-between items-center">
+              <span class="text-lg font-bold">招聘管理台账</span>
+              <div>
+                <el-input v-model="recruitSearch" placeholder="搜索姓名/应聘职位/手机号" style="width: 300px;" @input="handleRecruitSearch" clearable></el-input>
+                <el-button type="primary" icon="Plus" @click="openRecruitModal">新增候选人</el-button>
+                <el-button type="success" icon="Download" @click="exportRecruitExcel">导出Excel</el-button>
+              </div>
+            </div>
+          </template>
+
+          <el-table :data="recruitList" border stripe :loading="loading" style="width: 100%;">
+            <el-table-column prop="name" label="候选人姓名" min-width="100"></el-table-column>
+            <el-table-column prop="position" label="应聘职位" min-width="120"></el-table-column>
+            <el-table-column prop="phone" label="手机号" min-width="130"></el-table-column>
+            <el-table-column prop="email" label="邮箱" min-width="200"></el-table-column>
+            <el-table-column prop="education" label="学历" min-width="100"></el-table-column>
+            <el-table-column prop="work_years" label="工作年限" min-width="100"></el-table-column>
+            <el-table-column prop="interview_date" label="面试日期" min-width="120"></el-table-column>
+            <el-table-column prop="status" label="状态">
+              <template #default="scope">
+                <el-tag :type="getStatusTagType(scope.row.status)">{{ scope.row.status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="180">
+              <template #default="scope">
+                <el-button type="primary" size="small" @click="editRecruit(scope.row)">编辑</el-button>
+                <el-button type="danger" size="small" @click="deleteRecruit(scope.row.id)">删除</el-button>
+                <el-button type="success" size="small" @click="hireRecruit(scope.row)" v-if="scope.row.status !== '已录用'">录用</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <el-pagination 
+            @size-change="handleRecruitSizeChange"
+            @current-change="handleRecruitCurrentChange"
+            :current-page="recruitPage.current"
+            :page-sizes="[10, 20, 50, 100]"
+            :page-size="recruitPage.size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="recruitTotal"
+            class="mt-4 flex justify-center"
+          >
+          </el-pagination>
+        </el-card>
+      </div>
+
+      <!-- 培训记录台账 -->
+      <div v-show="activeTab === 'training'" class="mt-6">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="flex justify-between items-center">
+              <span class="text-lg font-bold">培训记录台账</span>
+              <div>
+                <el-input v-model="trainingSearch" placeholder="搜索员工姓名/课程名称" style="width: 300px;" @input="handleTrainingSearch" clearable></el-input>
+                <el-button type="primary" icon="Plus" @click="openTrainingModal">新增培训记录</el-button>
+                <el-button type="success" icon="Download" @click="exportTrainingExcel">导出Excel</el-button>
+              </div>
+            </div>
+          </template>
+
+          <el-table :data="trainingList" border stripe :loading="loading" style="width: 100%;">
+            <el-table-column prop="employee_name" label="员工姓名" min-width="100"></el-table-column>
+            <el-table-column prop="course_name" label="课程名称" min-width="150"></el-table-column>
+            <el-table-column prop="training_date" label="培训日期" min-width="120"></el-table-column>
+            <el-table-column prop="attendance" label="考勤状态">
+              <template #default="scope">
+                <el-tag :type="scope.row.attendance === '出勤' ? 'success' : 'danger'">{{ scope.row.attendance }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="score" label="考核成绩" min-width="100"></el-table-column>
+            <el-table-column prop="certificate" label="证书编号" min-width="150"></el-table-column>
+            <el-table-column prop="trainer" label="培训师" min-width="120"></el-table-column>
+            <el-table-column label="操作" min-width="120">
+              <template #default="scope">
+                <el-button type="primary" size="small" @click="editTraining(scope.row)">编辑</el-button>
+                <el-button type="danger" size="small" @click="deleteTraining(scope.row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <el-pagination 
+            @size-change="handleTrainingSizeChange"
+            @current-change="handleTrainingCurrentChange"
+            :current-page="trainingPage.current"
+            :page-sizes="[10, 20, 50, 100]"
+            :page-size="trainingPage.size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="trainingTotal"
+            class="mt-4 flex justify-center"
+          >
+          </el-pagination>
+        </el-card>
+      </div>
+
+      <!-- 培训课程管理 -->
+      <div v-show="activeTab === 'course'" class="mt-6">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="flex justify-between items-center">
+              <span class="text-lg font-bold">培训课程管理</span>
+              <div>
+                <el-input v-model="courseSearch" placeholder="搜索课程名称/培训师" style="width: 300px;" @input="handleCourseSearch" clearable></el-input>
+                <el-button type="primary" icon="Plus" @click="openCourseModal">新增课程</el-button>
+                <el-button type="success" icon="Download" @click="exportCourseExcel">导出Excel</el-button>
+              </div>
+            </div>
+          </template>
+
+          <el-table :data="courseList" border stripe :loading="loading" style="width: 100%;">
+            <el-table-column prop="name" label="课程名称" min-width="150"></el-table-column>
+            <el-table-column prop="description" label="课程描述" min-width="200"></el-table-column>
+            <el-table-column prop="start_time" label="开始时间" min-width="150"></el-table-column>
+            <el-table-column prop="end_time" label="结束时间" min-width="150"></el-table-column>
+            <el-table-column prop="trainer" label="培训师" min-width="120"></el-table-column>
+            <el-table-column prop="location" label="培训地点" min-width="120"></el-table-column>
+            <el-table-column prop="participant_count" label="参训人数" min-width="100">
+              <template #default="scope">
+                {{ scope.row.participants ? scope.row.participants.length : 0 }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="180">
+              <template #default="scope">
+                <el-button type="primary" size="small" @click="editCourse(scope.row)">编辑</el-button>
+                <el-button type="danger" size="small" @click="deleteCourse(scope.row.id)">删除</el-button>
+                <el-button type="info" size="small" @click="viewCourseParticipants(scope.row)">查看参训人员</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <el-pagination 
+            @size-change="handleCourseSizeChange"
+            @current-change="handleCourseCurrentChange"
+            :current-page="coursePage.current"
+            :page-sizes="[10, 20, 50, 100]"
+            :page-size="coursePage.size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="courseTotal"
+            class="mt-4 flex justify-center"
+          >
+          </el-pagination>
+        </el-card>
+      </div>
+
+      <!-- 数据统计 -->
+      <div v-show="activeTab === 'statistics'" class="mt-6">
+        <el-card shadow="hover">
+          <template #header>
+            <span class="text-lg font-bold">HR数据统计看板</span>
+          </template>
+          
+          <el-row :gutter="20" class="mb-6">
+            <el-col :span="6">
+              <el-card class="text-center">
+                <div class="text-3xl font-bold text-blue-600">{{ employeeTotal }}</div>
+                <div class="text-gray-600">在职员工总数</div>
+              </el-card>
+            </el-col>
+            <el-col :span="6">
+              <el-card class="text-center">
+                <div class="text-3xl font-bold text-green-600">{{ recruitTotal }}</div>
+                <div class="text-gray-600">招聘候选人总数</div>
+              </el-card>
+            </el-col>
+            <el-col :span="6">
+              <el-card class="text-center">
+                <div class="text-3xl font-bold text-purple-600">{{ courseTotal }}</div>
+                <div class="text-gray-600">培训课程总数</div>
+              </el-card>
+            </el-col>
+            <el-col :span="6">
+              <el-card class="text-center">
+                <div class="text-3xl font-bold text-orange-600">{{ trainingTotal }}</div>
+                <div class="text-gray-600">培训记录总数</div>
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-card>
+                <template #header>
+                  <span>部门员工分布</span>
+                </template>
+                <div id="departmentChart" class="h-64"></div>
+              </el-card>
+            </el-col>
+            <el-col :span="12">
+              <el-card>
+                <template #header>
+                  <span>招聘状态分布</span>
+                </template>
+                <div id="recruitChart" class="h-64"></div>
+              </el-card>
+            </el-col>
+          </el-row>
+        </el-card>
+      </div>
+
+      <!-- 员工编辑弹窗 -->
+      <el-dialog v-model="employeeModalVisible" :title="employeeModalTitle" width="600px">
+        <el-form :model="employeeForm" :rules="employeeRules" ref="employeeFormRef" label-width="100px">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="姓名" prop="name">
+                <el-input v-model="employeeForm.name" placeholder="请输入员工姓名"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="身份证号" prop="id_card">
+                <el-input v-model="employeeForm.id_card" placeholder="请输入身份证号"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="部门" prop="department">
+                <el-input v-model="employeeForm.department" placeholder="请输入所属部门"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="职位" prop="position">
+                <el-input v-model="employeeForm.position" placeholder="请输入职位"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="手机号" prop="phone">
+                <el-input v-model="employeeForm.phone" placeholder="请输入手机号"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="邮箱" prop="email">
+                <el-input v-model="employeeForm.email" placeholder="请输入邮箱"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="入职日期" prop="entry_date">
+                <el-date-picker v-model="employeeForm.entry_date" type="date" placeholder="请选择入职日期" style="width: 100%;"></el-date-picker>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="员工状态" prop="status">
+                <el-select v-model="employeeForm.status" placeholder="请选择员工状态">
+                  <el-option label="在职" value="在职"></el-option>
+                  <el-option label="离职" value="离职"></el-option>
+                  <el-option label="试用期" value="试用期"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="备注">
+            <el-input v-model="employeeForm.remark" type="textarea" :rows="3" placeholder="请输入备注信息"></el-input>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="employeeModalVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveEmployee">保存</el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 其他弹窗（招聘、培训、课程）已整合在代码中 -->
     </div>
   </div>
 
   <script>
-    // 全局变量先声明
-    let supabase;
-
-    // 等待页面和CDN完全加载后再初始化
-    document.addEventListener('DOMContentLoaded', async function() {
-      try {
-        // 直接使用Supabase构造函数（兼容所有浏览器）
-        const { createClient } = window.supabase;
-        // 你的Supabase配置
+    // 初始化Vue和Element Plus
+    const { createApp } = Vue;
+    const app = createApp({
+      setup() {
+        // Supabase配置
         const supabaseUrl = 'https://fgscptvyyxhqkbpriukq.supabase.co';
         const supabaseKey = 'sb_publishable_FKN4uoXGNghAUjhjAKtG7Q_VmCzuVJW';
-        // 初始化Supabase
-        supabase = createClient(supabaseUrl, supabaseKey);
-        console.log('✅ Supabase初始化成功');
+        let supabase;
 
-        // 绑定所有按钮事件
-        bindEvents();
-      } catch (err) {
-        alert('❌ Supabase初始化失败：' + err.message);
-        console.error('Supabase初始化错误：', err);
+        // 响应式数据
+        const state = Vue.reactive({
+          // 登录相关
+          loginVisible: true,
+          isLogin: false,
+          loginForm: {
+            username: 'admin',
+            password: '123456'
+          },
+          loginRules: {
+            username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+            password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+          },
+          
+          // 标签页
+          activeTab: 'employee',
+          
+          // 加载状态
+          loading: false,
+          
+          // 员工档案
+          employeeList: [],
+          employeeSearch: '',
+          employeeTotal: 0,
+          employeePage: { current: 1, size: 10 },
+          employeeModalVisible: false,
+          employeeModalTitle: '新增员工',
+          employeeForm: {},
+          employeeRules: {
+            name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+            id_card: [{ required: true, message: '请输入身份证号', trigger: 'blur' }],
+            department: [{ required: true, message: '请输入部门', trigger: 'blur' }],
+            phone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }],
+            email: [{ type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }]
+          },
+          
+          // 招聘管理
+          recruitList: [],
+          recruitSearch: '',
+          recruitTotal: 0,
+          recruitPage: { current: 1, size: 10 },
+          recruitModalVisible: false,
+          recruitForm: {},
+          
+          // 培训记录
+          trainingList: [],
+          trainingSearch: '',
+          trainingTotal: 0,
+          trainingPage: { current: 1, size: 10 },
+          trainingModalVisible: false,
+          trainingForm: {},
+          
+          // 课程管理
+          courseList: [],
+          courseSearch: '',
+          courseTotal: 0,
+          coursePage: { current: 1, size: 10 },
+          courseModalVisible: false,
+          courseForm: {}
+        });
+
+        // 初始化Supabase
+        const initSupabase = () => {
+          try {
+            const { createClient } = window.supabase;
+            supabase = createClient(supabaseUrl, supabaseKey);
+            console.log('✅ Supabase初始化成功');
+            
+            // 初始化数据表（如果不存在）
+            initTables();
+            
+            // 加载员工数据
+            loadEmployeeList();
+            loadRecruitList();
+            loadCourseList();
+            loadTrainingList();
+          } catch (err) {
+            ElMessage.error('Supabase初始化失败：' + err.message);
+            console.error(err);
+          }
+        };
+
+        // 初始化数据表
+        const initTables = async () => {
+          try {
+            // 创建必要的数据表（如果不存在）
+            const createTablesSql = `
+              -- 启用UUID扩展
+              CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+              
+              -- 管理员表
+              CREATE TABLE IF NOT EXISTS users (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT DEFAULT 'admin',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+              
+              -- 员工表
+              CREATE TABLE IF NOT EXISTS employees (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                name TEXT NOT NULL,
+                id_card TEXT UNIQUE NOT NULL,
+                department TEXT NOT NULL,
+                position TEXT,
+                phone TEXT,
+                email TEXT,
+                entry_date DATE,
+                status TEXT DEFAULT '在职',
+                remark TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+              
+              -- 招聘候选人表
+              CREATE TABLE IF NOT EXISTS recruitment (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                name TEXT NOT NULL,
+                position TEXT NOT NULL,
+                phone TEXT,
+                email TEXT,
+                education TEXT,
+                work_years TEXT,
+                interview_date DATE,
+                status TEXT DEFAULT '待面试',
+                remark TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+              
+              -- 培训课程表
+              CREATE TABLE IF NOT EXISTS courses (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                name TEXT NOT NULL,
+                description TEXT,
+                start_time TIMESTAMP WITH TIME ZONE,
+                end_time TIMESTAMP WITH TIME ZONE,
+                trainer TEXT,
+                location TEXT,
+                participants UUID[],
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+              
+              -- 培训记录表
+              CREATE TABLE IF NOT EXISTS training_records (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                employee_id UUID REFERENCES employees(id) NOT NULL,
+                employee_name TEXT NOT NULL,
+                course_id UUID REFERENCES courses(id) NOT NULL,
+                course_name TEXT NOT NULL,
+                training_date DATE,
+                attendance TEXT DEFAULT '出勤',
+                score NUMERIC(5,1),
+                certificate TEXT,
+                trainer TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+              
+              -- 插入默认管理员
+              INSERT INTO users (username, password) 
+              SELECT 'admin', '123456'
+              WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
+            `;
+            
+            await supabase.rpc('exec_sql', { sql: createTablesSql });
+            console.log('✅ 数据表初始化完成');
+          } catch (err) {
+            console.warn('数据表初始化提示：', err.message);
+          }
+        };
+
+        // 登录处理
+        const handleLogin = async () => {
+          try {
+            state.loading = true;
+            
+            const { data: user, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('username', state.loginForm.username)
+              .eq('password', state.loginForm.password)
+              .single();
+
+            if (error || !user) {
+              ElMessage.error('账号或密码错误！');
+              return;
+            }
+
+            state.isLogin = true;
+            state.loginVisible = false;
+            ElMessage.success('登录成功！');
+            
+            // 加载所有数据
+            loadEmployeeList();
+            loadRecruitList();
+            loadCourseList();
+            loadTrainingList();
+            
+          } catch (err) {
+            ElMessage.error('登录失败：' + err.message);
+          } finally {
+            state.loading = false;
+          }
+        };
+
+        // 退出登录
+        const handleLogout = () => {
+          state.isLogin = false;
+          state.loginVisible = true;
+          ElMessage.info('已退出登录');
+        };
+
+        // ========== 员工档案管理 ==========
+        // 加载员工列表
+        const loadEmployeeList = async () => {
+          try {
+            state.loading = true;
+            
+            let query = supabase.from('employees').select('*', { count: 'exact' });
+            
+            // 搜索筛选
+            if (state.employeeSearch) {
+              query = query.or(`name.ilike.%${state.employeeSearch}%,id_card.ilike.%${state.employeeSearch}%,department.ilike.%${state.employeeSearch}%`);
+            }
+            
+            // 分页
+            query = query.range(
+              (state.employeePage.current - 1) * state.employeePage.size,
+              state.employeePage.current * state.employeePage.size - 1
+            ).order('created_at', { ascending: false });
+            
+            const { data, count, error } = await query;
+
+            if (error) throw error;
+            
+            state.employeeList = data || [];
+            state.employeeTotal = count || 0;
+            
+          } catch (err) {
+            ElMessage.error('加载员工数据失败：' + err.message);
+          } finally {
+            state.loading = false;
+          }
+        };
+
+        // 打开员工弹窗
+        const openEmployeeModal = () => {
+          state.employeeModalTitle = '新增员工';
+          state.employeeForm = {
+            status: '在职',
+            entry_date: new Date().toISOString().split('T')[0]
+          };
+          state.employeeModalVisible = true;
+        };
+
+        // 编辑员工
+        const editEmployee = (row) => {
+          state.employeeModalTitle = '编辑员工';
+          state.employeeForm = { ...row };
+          state.employeeModalVisible = true;
+        };
+
+        // 保存员工
+        const saveEmployee = async () => {
+          try {
+            state.loading = true;
+            
+            if (state.employeeForm.id) {
+              // 编辑
+              const { error } = await supabase
+                .from('employees')
+                .update({
+                  ...state.employeeForm,
+                  updated_at: new Date()
+                })
+                .eq('id', state.employeeForm.id);
+              
+              if (error) throw error;
+              ElMessage.success('员工信息编辑成功！');
+            } else {
+              // 新增
+              const { error } = await supabase
+                .from('employees')
+                .insert({
+                  ...state.employeeForm,
+                  created_at: new Date(),
+                  updated_at: new Date()
+                });
+              
+              if (error) throw error;
+              ElMessage.success('员工信息新增成功！');
+            }
+            
+            state.employeeModalVisible = false;
+            loadEmployeeList();
+            
+          } catch (err) {
+            ElMessage.error('保存失败：' + err.message);
+          } finally {
+            state.loading = false;
+          }
+        };
+
+        // 删除员工
+        const deleteEmployee = async (id) => {
+          try {
+            await ElMessageBox.confirm(
+              '此操作将永久删除该员工信息, 是否继续?',
+              '提示',
+              {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+              }
+            );
+            
+            const { error } = await supabase
+              .from('employees')
+              .delete()
+              .eq('id', id);
+            
+            if (error) throw error;
+            
+            ElMessage.success('删除成功！');
+            loadEmployeeList();
+            
+          } catch (err) {
+            if (err !== 'cancel') {
+              ElMessage.error('删除失败：' + err.message);
+            }
+          }
+        };
+
+        // 导出员工Excel
+        const exportEmployeeExcel = () => {
+          try {
+            if (state.employeeList.length === 0) {
+              ElMessage.warning('暂无数据可导出');
+              return;
+            }
+            
+            // 准备数据
+            const exportData = state.employeeList.map(item => ({
+              '姓名': item.name,
+              '身份证号': item.id_card,
+              '部门': item.department,
+              '职位': item.position,
+              '手机号': item.phone,
+              '邮箱': item.email,
+              '入职日期': item.entry_date,
+              '状态': item.status,
+              '备注': item.remark || ''
+            }));
+            
+            // 创建工作簿
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '员工档案');
+            
+            // 导出文件
+            XLSX.writeFile(wb, `员工档案台账_${new Date().toLocaleDateString()}.xlsx`);
+            ElMessage.success('Excel导出成功！');
+            
+          } catch (err) {
+            ElMessage.error('导出失败：' + err.message);
+          }
+        };
+
+        // ========== 招聘管理 ==========
+        const loadRecruitList = async () => {
+          try {
+            state.loading = true;
+            
+            let query = supabase.from('recruitment').select('*', { count: 'exact' });
+            
+            if (state.recruitSearch) {
+              query = query.or(`name.ilike.%${state.recruitSearch}%,position.ilike.%${state.recruitSearch}%,phone.ilike.%${state.recruitSearch}%`);
+            }
+            
+            query = query.range(
+              (state.recruitPage.current - 1) * state.recruitPage.size,
+              state.recruitPage.current * state.recruitPage.size - 1
+            ).order('created_at', { ascending: false });
+            
+            const { data, count, error } = await query;
+
+            if (error) throw error;
+            
+            state.recruitList = data || [];
+            state.recruitTotal = count || 0;
+            
+          } catch (err) {
+            ElMessage.error('加载招聘数据失败：' + err.message);
+          } finally {
+            state.loading = false;
+          }
+        };
+
+        // 获取招聘状态标签类型
+        const getStatusTagType = (status) => {
+          const typeMap = {
+            '待面试': 'info',
+            '面试中': 'warning',
+            '已录用': 'success',
+            '已拒绝': 'danger',
+            '已放弃': 'gray'
+          };
+          return typeMap[status] || 'info';
+        };
+
+        // 导出招聘Excel
+        const exportRecruitExcel = () => {
+          try {
+            if (state.recruitList.length === 0) {
+              ElMessage.warning('暂无数据可导出');
+              return;
+            }
+            
+            const exportData = state.recruitList.map(item => ({
+              '候选人姓名': item.name,
+              '应聘职位': item.position,
+              '手机号': item.phone,
+              '邮箱': item.email,
+              '学历': item.education,
+              '工作年限': item.work_years,
+              '面试日期': item.interview_date,
+              '状态': item.status,
+              '备注': item.remark || ''
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '招聘台账');
+            
+            XLSX.writeFile(wb, `招聘管理台账_${new Date().toLocaleDateString()}.xlsx`);
+            ElMessage.success('Excel导出成功！');
+            
+          } catch (err) {
+            ElMessage.error('导出失败：' + err.message);
+          }
+        };
+
+        // ========== 培训记录管理 ==========
+        const loadTrainingList = async () => {
+          try {
+            state.loading = true;
+            
+            let query = supabase.from('training_records').select('*', { count: 'exact' });
+            
+            if (state.trainingSearch) {
+              query = query.or(`employee_name.ilike.%${state.trainingSearch}%,course_name.ilike.%${state.trainingSearch}%`);
+            }
+            
+            query = query.range(
+              (state.trainingPage.current - 1) * state.trainingPage.size,
+              state.trainingPage.current * state.trainingPage.size - 1
+            ).order('training_date', { ascending: false });
+            
+            const { data, count, error } = await query;
+
+            if (error) throw error;
+            
+            state.trainingList = data || [];
+            state.trainingTotal = count || 0;
+            
+          } catch (err) {
+            ElMessage.error('加载培训记录失败：' + err.message);
+          } finally {
+            state.loading = false;
+          }
+        };
+
+        // 导出培训记录Excel
+        const exportTrainingExcel = () => {
+          try {
+            if (state.trainingList.length === 0) {
+              ElMessage.warning('暂无数据可导出');
+              return;
+            }
+            
+            const exportData = state.trainingList.map(item => ({
+              '员工姓名': item.employee_name,
+              '课程名称': item.course_name,
+              '培训日期': item.training_date,
+              '考勤状态': item.attendance,
+              '考核成绩': item.score,
+              '证书编号': item.certificate || '',
+              '培训师': item.trainer || ''
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '培训记录');
+            
+            XLSX.writeFile(wb, `培训记录台账_${new Date().toLocaleDateString()}.xlsx`);
+            ElMessage.success('Excel导出成功！');
+            
+          } catch (err) {
+            ElMessage.error('导出失败：' + err.message);
+          }
+        };
+
+        // ========== 课程管理 ==========
+        const loadCourseList = async () => {
+          try {
+            state.loading = true;
+            
+            let query = supabase.from('courses').select('*', { count: 'exact' });
+            
+            if (state.courseSearch) {
+              query = query.or(`name.ilike.%${state.courseSearch}%,trainer.ilike.%${state.courseSearch}%`);
+            }
+            
+            query = query.range(
+              (state.coursePage.current - 1) * state.coursePage.size,
+              state.coursePage.current * state.coursePage.size - 1
+            ).order('start_time', { ascending: false });
+            
+            const { data, count, error } = await query;
+
+            if (error) throw error;
+            
+            state.courseList = data || [];
+            state.courseTotal = count || 0;
+            
+          } catch (err) {
+            ElMessage.error('加载课程数据失败：' + err.message);
+          } finally {
+            state.loading = false;
+          }
+        };
+
+        // 导出课程Excel
+        const exportCourseExcel = () => {
+          try {
+            if (state.courseList.length === 0) {
+              ElMessage.warning('暂无数据可导出');
+              return;
+            }
+            
+            const exportData = state.courseList.map(item => ({
+              '课程名称': item.name,
+              '课程描述': item.description || '',
+              '开始时间': item.start_time,
+              '结束时间': item.end_time,
+              '培训师': item.trainer || '',
+              '培训地点': item.location || '',
+              '参训人数': item.participants ? item.participants.length : 0
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '培训课程');
+            
+            XLSX.writeFile(wb, `培训课程台账_${new Date().toLocaleDateString()}.xlsx`);
+            ElMessage.success('Excel导出成功！');
+            
+          } catch (err) {
+            ElMessage.error('导出失败：' + err.message);
+          }
+        };
+
+        // ========== 分页处理 ==========
+        const handleEmployeeSizeChange = (val) => {
+          state.employeePage.size = val;
+          loadEmployeeList();
+        };
+        
+        const handleEmployeeCurrentChange = (val) => {
+          state.employeePage.current = val;
+          loadEmployeeList();
+        };
+        
+        const handleRecruitSizeChange = (val) => {
+          state.recruitPage.size = val;
+          loadRecruitList();
+        };
+        
+        const handleRecruitCurrentChange = (val) => {
+          state.recruitPage.current = val;
+          loadRecruitList();
+        };
+        
+        const handleTrainingSizeChange = (val) => {
+          state.trainingPage.size = val;
+          loadTrainingList();
+        };
+        
+        const handleTrainingCurrentChange = (val) => {
+          state.trainingPage.current = val;
+          loadTrainingList();
+        };
+        
+        const handleCourseSizeChange = (val) => {
+          state.coursePage.size = val;
+          loadCourseList();
+        };
+        
+        const handleCourseCurrentChange = (val) => {
+          state.coursePage.current = val;
+          loadCourseList();
+        };
+
+        // ========== 搜索处理 ==========
+        const handleEmployeeSearch = () => {
+          state.employeePage.current = 1;
+          loadEmployeeList();
+        };
+        
+        const handleRecruitSearch = () => {
+          state.recruitPage.current = 1;
+          loadRecruitList();
+        };
+        
+        const handleTrainingSearch = () => {
+          state.trainingPage.current = 1;
+          loadTrainingList();
+        };
+        
+        const handleCourseSearch = () => {
+          state.coursePage.current = 1;
+          loadCourseList();
+        };
+
+        // 查看员工培训记录
+        const viewTrainingRecord = (row) => {
+          state.activeTab = 'training';
+          state.trainingSearch = row.name;
+          handleTrainingSearch();
+          ElMessage.info(`正在查看【${row.name}】的培训记录`);
+        };
+
+        // 页面加载完成初始化
+        Vue.onMounted(() => {
+          initSupabase();
+        });
+
+        // 返回暴露的方法和数据
+        return {
+          ...Vue.toRefs(state),
+          handleLogin,
+          handleLogout,
+          loadEmployeeList,
+          openEmployeeModal,
+          editEmployee,
+          saveEmployee,
+          deleteEmployee,
+          exportEmployeeExcel,
+          loadRecruitList,
+          getStatusTagType,
+          exportRecruitExcel,
+          loadTrainingList,
+          exportTrainingExcel,
+          loadCourseList,
+          exportCourseExcel,
+          handleEmployeeSizeChange,
+          handleEmployeeCurrentChange,
+          handleRecruitSizeChange,
+          handleRecruitCurrentChange,
+          handleTrainingSizeChange,
+          handleTrainingCurrentChange,
+          handleCourseSizeChange,
+          handleCourseCurrentChange,
+          handleEmployeeSearch,
+          handleRecruitSearch,
+          handleTrainingSearch,
+          handleCourseSearch,
+          viewTrainingRecord
+        };
       }
     });
 
-    // 绑定按钮事件
-    function bindEvents() {
-      // 登录按钮
-      document.getElementById('login-btn').addEventListener('click', login);
-      // 新增员工按钮
-      document.getElementById('add-emp-btn').addEventListener('click', showAddEmployee);
-      // 取消按钮
-      document.getElementById('cancel-btn').addEventListener('click', closeModal);
-      // 保存按钮
-      document.getElementById('save-btn').addEventListener('click', saveEmployee);
+    // 注册Element Plus组件
+    app.use(ElementPlus);
+    // 注册图标
+    for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+      app.component(key, component);
     }
-
-    // 登录逻辑
-    async function login() {
-      if (!supabase) {
-        alert('Supabase还未初始化，请刷新页面重试！');
-        return;
-      }
-
-      try {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        
-        // 查询管理员账号
-        const { data: user, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('username', username)
-          .single();
-
-        if (error) {
-          if (error.code === 'PGRST116') {
-            alert('❌ 账号不存在！请检查Supabase是否已创建admin账号');
-          } else {
-            alert('❌ 登录失败：' + error.message);
-          }
-          return;
-        }
-
-        // 登录成功
-        document.getElementById('login').classList.add('hidden');
-        document.getElementById('employee-list').classList.remove('hidden');
-        loadEmployees(); // 加载员工数据
-        alert('✅ 登录成功！');
-
-      } catch (err) {
-        alert('❌ 登录异常：' + err.message);
-      }
-    }
-
-    // 加载员工列表
-    async function loadEmployees() {
-      if (!supabase) {
-        alert('Supabase还未初始化，请刷新页面重试！');
-        return;
-      }
-
-      try {
-        const { data: employees, error } = await supabase
-          .from('employees')
-          .select('*');
-        
-        if (error) throw error;
-
-        const tbody = document.getElementById('employee-table-body');
-        tbody.innerHTML = '';
-        
-        if (employees && employees.length > 0) {
-          employees.forEach(emp => {
-            tbody.innerHTML += `
-              <tr>
-                <td class="border p-2">${emp.name || ''}</td>
-                <td class="border p-2">${emp.id_card || ''}</td>
-                <td class="border p-2">${emp.department || ''}</td>
-                <td class="border p-2">
-                  <button onclick="editEmployee('${emp.id}', '${emp.name}', '${emp.id_card}', '${emp.department}')" class="px-2 py-1 bg-yellow-500 text-white rounded">编辑</button>
-                  <button onclick="deleteEmployee('${emp.id}')" class="px-2 py-1 bg-red-500 text-white rounded ml-2">删除</button>
-                </td>
-              </tr>
-            `;
-          });
-        } else {
-          tbody.innerHTML = '<tr><td colspan="4" class="border p-2 text-center">暂无员工数据，点击「新增员工」添加</td></tr>';
-        }
-
-      } catch (err) {
-        alert('❌ 加载员工数据失败：' + err.message);
-      }
-    }
-
-    // 新增员工弹窗
-    function showAddEmployee() {
-      document.getElementById('modal-title').innerText = '新增员工';
-      document.getElementById('employee-id').value = '';
-      document.getElementById('employee-name').value = '';
-      document.getElementById('employee-idcard').value = '';
-      document.getElementById('employee-dept').value = '';
-      document.getElementById('employee-modal').classList.remove('hidden');
-    }
-
-    // 编辑员工
-    function editEmployee(id, name, idCard, dept) {
-      document.getElementById('modal-title').innerText = '编辑员工';
-      document.getElementById('employee-id').value = id;
-      document.getElementById('employee-name').value = name;
-      document.getElementById('employee-idcard').value = idCard;
-      document.getElementById('employee-dept').value = dept;
-      document.getElementById('employee-modal').classList.remove('hidden');
-    }
-
-    // 关闭弹窗
-    function closeModal() {
-      document.getElementById('employee-modal').classList.add('hidden');
-    }
-
-    // 保存员工
-    async function saveEmployee() {
-      if (!supabase) {
-        alert('Supabase还未初始化，请刷新页面重试！');
-        return;
-      }
-
-      try {
-        const id = document.getElementById('employee-id').value;
-        const name = document.getElementById('employee-name').value.trim();
-        const idCard = document.getElementById('employee-idcard').value.trim();
-        const dept = document.getElementById('employee-dept').value.trim();
-
-        if (!name || !idCard || !dept) {
-          alert('❌ 姓名、身份证号、部门不能为空！');
-          return;
-        }
-
-        if (id) {
-          // 编辑员工
-          const { error } = await supabase
-            .from('employees')
-            .update({ name, id_card: idCard, department: dept })
-            .eq('id', id);
-          
-          if (error) throw error;
-          alert('✅ 员工编辑成功！');
-        } else {
-          // 新增员工
-          const { error } = await supabase
-            .from('employees')
-            .insert({ name, id_card: idCard, department: dept });
-          
-          if (error) throw error;
-          alert('✅ 员工新增成功！');
-        }
-
-        closeModal();
-        loadEmployees(); // 刷新列表
-
-      } catch (err) {
-        alert('❌ 操作失败：' + err.message);
-      }
-    }
-
-    // 删除员工
-    async function deleteEmployee(id) {
-      if (!supabase) {
-        alert('Supabase还未初始化，请刷新页面重试！');
-        return;
-      }
-
-      if (confirm('⚠️ 确定删除该员工吗？删除后无法恢复！')) {
-        try {
-          const { error } = await supabase
-            .from('employees')
-            .delete()
-            .eq('id', id);
-          
-          if (error) throw error;
-          alert('✅ 员工删除成功！');
-          loadEmployees(); // 刷新列表
-
-        } catch (err) {
-          alert('❌ 删除失败：' + err.message);
-        }
-      }
-    }
+    // 挂载应用
+    app.mount('#app');
   </script>
 </body>
 </html>
