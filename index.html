@@ -8,8 +8,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css">
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+  <!-- Supabase（完整版，修复兼容性） -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
   <!-- Vue 3 -->
   <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
   <!-- Element Plus -->
@@ -411,11 +411,24 @@
 
     createApp({
       setup() {
-        // Supabase配置
+        // ========== 关键配置：替换成你自己的Supabase信息 ==========
         const supabaseUrl = 'https://fgscptvyyxhqkbpriukq.supabase.co';
-        // 注意：这里替换成你自己的Supabase anon key（在Supabase后台→Settings→API→anon/public key）
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnc2NwdHZ5eXhocWticHJpdWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTExMDAwMDAsImV4cCI6MjAyNjY3NjAwMH0.XXXX'; // 替换成你的真实key
-        let supabase;
+        // 👇 必须替换成你从Supabase后台复制的anon public key（Settings→API→anon/public）
+        const supabaseKey = '替换成你的真实Anon Key';
+        
+        // 初始化Supabase客户端（修复406错误的核心配置）
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey, {
+          auth: {
+            persistSession: false, // 关闭会话持久化，避免鉴权冲突
+            autoRefreshToken: false
+          },
+          global: {
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          }
+        });
 
         // 基础状态
         const isLogin = ref(false);
@@ -479,19 +492,7 @@
         });
         const trainingFormRef = ref(null);
 
-        // 初始化Supabase
-        const initSupabase = () => {
-          try {
-            const { createClient } = window.supabase;
-            supabase = createClient(supabaseUrl, supabaseKey);
-            console.log('✅ Supabase初始化成功');
-          } catch (err) {
-            ElMessage.error('Supabase初始化失败：' + err.message);
-            console.error(err);
-          }
-        };
-
-        // 登录处理（修复核心）
+        // ========== 核心修复：登录逻辑（解决406错误） ==========
         const handleLogin = async () => {
           try {
             loading.value = true;
@@ -502,20 +503,23 @@
               loading.value = false;
               return;
             }
+
+            // 修复查询方式：避免URL编码问题
+            const username = loginForm.username.trim();
+            const password = loginForm.password.trim();
             
-            // 修复查询逻辑：去掉single()，兼容数组返回
             const { data: user, error } = await supabase
               .from('users')
               .select('*')
-              .eq('username', loginForm.username.trim())
-              .eq('password', loginForm.password.trim());
+              .eq('username', username)
+              .eq('password', password)
+              .limit(1);
 
             // 调试信息（F12查看）
-            console.log('登录查询-数据：', user);
-            console.log('登录查询-错误：', error);
+            console.log('登录查询结果：', user, '错误：', error);
             
             if (error) {
-              ElMessage.error('数据库查询失败：' + error.message);
+              ElMessage.error('登录失败：' + error.message);
               return;
             }
             
@@ -554,7 +558,8 @@
             let query = supabase.from('employees').select('*', { count: 'exact' });
             
             if (employeeSearch.value) {
-              query = query.or(`name.ilike.%${employeeSearch.value}%,id_card.ilike.%${employeeSearch.value}%,department.ilike.%${employeeSearch.value}%`);
+              const search = employeeSearch.value.trim();
+              query = query.or(`name.ilike.%${search}%,id_card.ilike.%${search}%,department.ilike.%${search}%`);
             }
             
             query = query.range(
@@ -722,7 +727,8 @@
             let query = supabase.from('recruitment').select('*', { count: 'exact' });
             
             if (recruitSearch.value) {
-              query = query.or(`name.ilike.%${recruitSearch.value}%,position.ilike.%${recruitSearch.value}%,phone.ilike.%${recruitSearch.value}%`);
+              const search = recruitSearch.value.trim();
+              query = query.or(`name.ilike.%${search}%,position.ilike.%${search}%,phone.ilike.%${search}%`);
             }
             
             query = query.range(
@@ -901,7 +907,8 @@
             let query = supabase.from('training_records').select('*', { count: 'exact' });
             
             if (trainingSearch.value) {
-              query = query.or(`employee_name.ilike.%${trainingSearch.value}%,course_name.ilike.%${trainingSearch.value}%`);
+              const search = trainingSearch.value.trim();
+              query = query.or(`employee_name.ilike.%${search}%,course_name.ilike.%${search}%`);
             }
             
             query = query.range(
@@ -1105,7 +1112,7 @@
 
         // 初始化
         onMounted(() => {
-          initSupabase();
+          console.log('✅ 系统初始化完成，Supabase客户端已创建');
         });
 
         return {
