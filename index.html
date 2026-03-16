@@ -20,14 +20,14 @@
         <label class="block mb-2">密码</label>
         <input type="password" id="password" class="w-full px-4 py-2 border rounded" value="123456">
       </div>
-      <button onclick="login()" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">登录</button>
+      <button id="login-btn" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">登录</button>
     </div>
 
     <!-- 员工台账模块 -->
     <div id="employee-list" class="mt-10 bg-white p-8 rounded-lg shadow hidden">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-bold">员工台账</h2>
-        <button onclick="showAddEmployee()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">新增员工</button>
+        <button id="add-emp-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">新增员工</button>
       </div>
       <table class="w-full border-collapse">
         <thead>
@@ -61,8 +61,8 @@
             <input type="text" id="employee-dept" class="w-full px-4 py-2 border rounded">
           </div>
           <div class="flex justify-end gap-2">
-            <button onclick="closeModal()" class="px-4 py-2 border rounded hover:bg-gray-100">取消</button>
-            <button onclick="saveEmployee()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
+            <button id="cancel-btn" class="px-4 py-2 border rounded hover:bg-gray-100">取消</button>
+            <button id="save-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
           </div>
         </div>
       </div>
@@ -70,63 +70,68 @@
   </div>
 
   <script>
-    // 已填好你的Supabase信息（不用改）
+    // 1. 先创建Supabase客户端（移到最前面，确保先初始化）
     const supabaseUrl = 'https://fgscptvyyxhqkbpriukq.supabase.co';
     const supabaseKey = 'sb_publishable_FKN4uoXGNghAUjhjAKtG7Q_VmCzuVJW';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // 创建Supabase客户端
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-
+    // 2. 所有函数定义（在supabase之后）
     // 登录逻辑
     async function login() {
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      
-      const { data: user } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .single();
+      try {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('username', username)
+          .single();
 
-      if (user) {
-        // 简化验证（适配默认密码123456）
-        document.getElementById('login').classList.add('hidden');
-        document.getElementById('employee-list').classList.remove('hidden');
-        loadEmployees(); // 加载员工数据
-      } else {
-        alert('账号或密码错误！请检查Supabase是否已创建users表并插入admin账号');
+        if (error) throw error;
+        if (user) {
+          // 登录成功
+          document.getElementById('login').classList.add('hidden');
+          document.getElementById('employee-list').classList.remove('hidden');
+          loadEmployees(); // 加载员工数据
+        } else {
+          alert('账号不存在！');
+        }
+      } catch (err) {
+        alert('登录失败：' + err.message + '\n请检查：1.Supabase表是否创建 2.是否有admin账号 3.网络是否正常');
       }
     }
 
     // 加载员工列表
     async function loadEmployees() {
-      const { data: employees, error } = await supabase
-        .from('employees')
-        .select('*');
-      
-      if (error) {
-        alert('加载员工数据失败：' + error.message);
-        return;
-      }
+      try {
+        const { data: employees, error } = await supabase
+          .from('employees')
+          .select('*');
+        
+        if (error) throw error;
 
-      const tbody = document.getElementById('employee-table-body');
-      tbody.innerHTML = '';
-      if (employees && employees.length > 0) {
-        employees.forEach(emp => {
-          tbody.innerHTML += `
-            <tr>
-              <td class="border p-2">${emp.name || ''}</td>
-              <td class="border p-2">${emp.id_card || ''}</td>
-              <td class="border p-2">${emp.department || ''}</td>
-              <td class="border p-2">
-                <button onclick="editEmployee('${emp.id}', '${emp.name}', '${emp.id_card}', '${emp.department}')" class="px-2 py-1 bg-yellow-500 text-white rounded">编辑</button>
-                <button onclick="deleteEmployee('${emp.id}')" class="px-2 py-1 bg-red-500 text-white rounded ml-2">删除</button>
-              </td>
-            </tr>
-          `;
-        });
-      } else {
-        tbody.innerHTML = '<tr><td colspan="4" class="border p-2 text-center">暂无员工数据，点击「新增员工」添加</td></tr>';
+        const tbody = document.getElementById('employee-table-body');
+        tbody.innerHTML = '';
+        if (employees && employees.length > 0) {
+          employees.forEach(emp => {
+            tbody.innerHTML += `
+              <tr>
+                <td class="border p-2">${emp.name || ''}</td>
+                <td class="border p-2">${emp.id_card || ''}</td>
+                <td class="border p-2">${emp.department || ''}</td>
+                <td class="border p-2">
+                  <button onclick="editEmployee('${emp.id}', '${emp.name}', '${emp.id_card}', '${emp.department}')" class="px-2 py-1 bg-yellow-500 text-white rounded">编辑</button>
+                  <button onclick="deleteEmployee('${emp.id}')" class="px-2 py-1 bg-red-500 text-white rounded ml-2">删除</button>
+                </td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" class="border p-2 text-center">暂无员工数据，点击「新增员工」添加</td></tr>';
+        }
+      } catch (err) {
+        alert('加载员工数据失败：' + err.message);
       }
     }
 
@@ -157,17 +162,17 @@
 
     // 保存员工
     async function saveEmployee() {
-      const id = document.getElementById('employee-id').value;
-      const name = document.getElementById('employee-name').value.trim();
-      const idCard = document.getElementById('employee-idcard').value.trim();
-      const dept = document.getElementById('employee-dept').value.trim();
-
-      if (!name || !idCard || !dept) {
-        alert('姓名、身份证号、部门不能为空！');
-        return;
-      }
-
       try {
+        const id = document.getElementById('employee-id').value;
+        const name = document.getElementById('employee-name').value.trim();
+        const idCard = document.getElementById('employee-idcard').value.trim();
+        const dept = document.getElementById('employee-dept').value.trim();
+
+        if (!name || !idCard || !dept) {
+          alert('姓名、身份证号、部门不能为空！');
+          return;
+        }
+
         if (id) {
           // 编辑
           const { error } = await supabase
@@ -187,7 +192,7 @@
         closeModal();
         loadEmployees(); // 刷新列表
       } catch (err) {
-        alert('操作失败：' + err.message + '，请检查Supabase数据表是否创建正确');
+        alert('操作失败：' + err.message);
       }
     }
 
@@ -207,6 +212,18 @@
         }
       }
     }
+
+    // 3. 页面加载完成后绑定事件（避免提前触发）
+    window.onload = function() {
+      // 绑定登录按钮
+      document.getElementById('login-btn').addEventListener('click', login);
+      // 绑定新增员工按钮
+      document.getElementById('add-emp-btn').addEventListener('click', showAddEmployee);
+      // 绑定取消按钮
+      document.getElementById('cancel-btn').addEventListener('click', closeModal);
+      // 绑定保存按钮
+      document.getElementById('save-btn').addEventListener('click', saveEmployee);
+    };
   </script>
 </body>
 </html>
