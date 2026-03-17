@@ -16,6 +16,8 @@
   <script src="https://cdn.jsdelivr.net/npm/element-plus/dist/index.full.js"></script>
   <!-- Excel导出 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- 新增：bcrypt密码验证 -->
+  <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
   <div id="app">
@@ -491,7 +493,7 @@
         });
         const trainingFormRef = ref(null);
 
-        // ========== 核心修复：登录逻辑（解决406错误） ==========
+        // ========== 核心修复：适配加密密码的登录逻辑 ==========
         const handleLogin = async () => {
           try {
             loading.value = true;
@@ -503,15 +505,14 @@
               return;
             }
 
-            // 修复查询方式：避免URL编码问题
             const username = loginForm.username.trim();
             const password = loginForm.password.trim();
             
+            // 1. 查询用户
             const { data: user, error } = await supabase
               .from('users')
               .select('*')
               .eq('username', username)
-              .eq('password', password)
               .limit(1);
 
             // 调试信息（F12查看）
@@ -523,6 +524,13 @@
             }
             
             if (!user || user.length === 0) {
+              ElMessage.error('账号不存在！');
+              return;
+            }
+
+            // 2. 用bcrypt验证加密密码（核心修复）
+            const isPasswordValid = bcrypt.compareSync(password, user[0].password);
+            if (!isPasswordValid) {
               ElMessage.error('账号或密码错误！');
               return;
             }
