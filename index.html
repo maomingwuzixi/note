@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HR台账管理系统（最终修复版）</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css">
-  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/element-plus/dist/index.full.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <title>HR台账管理系统</title>
+  <!-- 修复Element Plus样式CDN路径 -->
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     body { margin: 0; padding: 0; background: #f5f5f5; }
     .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
@@ -435,15 +436,10 @@
 
     createApp({
       setup() {
-        // Supabase初始化
+        // Supabase初始化（修复URL中的特殊字符）
         const supabase = window.supabase.createClient(
           'https://fgscptvyyxhqkbpriukq.supabase.co',
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnc2NwdHZ5eXhocWticHJpdWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDg4NDEsImV4cCI6MjA4OTIyNDg0MX0.else3hnnFpVh3j2wfS7vY4ku9xneQ5mh9sEcVUjrH5s',
-          { 
-            global: { 
-              fetch: (url, opt) => fetch(url.replace(/\?columns=.*$/, ''), opt) 
-            } 
-          }
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnc2NwdHZ5eXhocWticHJpdWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDg4NDEsImV4cCI6MjA4OTIyNDg0MX0.else3hnnFpVh3j2wfS7vY4ku9xneQ5mh9sEcVUjrH5s'
         );
 
         // 基础状态
@@ -481,13 +477,14 @@
         const batchEmpForm = reactive({ department: '', entry_date: '' });
         const batchEmpFormRef = ref(null);
 
-        // 加载员工数据
+        // 加载员工数据（修复字符串拼接）
         const loadEmployeeList = async () => {
           loading.value = true;
           try {
             let query = supabase.from('employees').select('*', { count: 'exact' });
             if (employeeSearch.value) {
-              query = query.or('name.ilike.%' + employeeSearch.value + '%,id_card.ilike.%' + employeeSearch.value + '%');
+              const searchStr = '%' + employeeSearch.value + '%';
+              query = query.or('name.ilike.' + searchStr + ',id_card.ilike.' + searchStr);
             }
             const from = (empPage.current - 1) * empPage.size;
             const to = from + empPage.size - 1;
@@ -698,7 +695,8 @@
           try {
             let query = supabase.from('recruitment').select('*', { count: 'exact' });
             if (recruitSearch.value) {
-              query = query.or('name.ilike.%' + recruitSearch.value + '%,position.ilike.%' + recruitSearch.value + '%');
+              const searchStr = '%' + recruitSearch.value + '%';
+              query = query.or('name.ilike.' + searchStr + ',position.ilike.' + searchStr);
             }
             const from = (recPage.current - 1) * recPage.size;
             const to = from + recPage.size - 1;
@@ -920,7 +918,8 @@
           try {
             let query = supabase.from('training_records').select('*', { count: 'exact' });
             if (trainSearch.value) {
-              query = query.or('employee_name.ilike.%' + trainSearch.value + '%,course_id.ilike.%' + trainSearch.value + '%');
+              const searchStr = '%' + trainSearch.value + '%';
+              query = query.or('employee_name.ilike.' + searchStr + ',course_id.ilike.' + searchStr);
             }
             const from = (trainPage.current - 1) * trainPage.size;
             const to = from + trainPage.size - 1;
