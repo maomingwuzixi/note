@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HR台账管理系统（精简版）</title>
+  <title>HR台账管理系统（完整版）</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css">
   <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/element-plus/dist/index.full.js"></script>
@@ -16,120 +16,180 @@
 </head>
 <body>
   <div id="app">
-    <!-- 登录 -->
+    <!-- 登录页面 -->
     <div v-if="!isLogin" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
       <el-card shadow="hover" style="width: 400px;">
         <h2 style="text-align: center; color: #409eff; margin-bottom: 20px;">HR台账管理系统</h2>
         <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="80px">
-          <el-form-item label="账号" prop="username"><el-input v-model="loginForm.username"></el-input></el-form-item>
-          <el-form-item label="密码" prop="password"><el-input v-model="loginForm.password" type="password"></el-input></el-form-item>
-          <el-form-item><el-button type="primary" @click="handleLogin" style="width: 100%;" :loading="loading">登录</el-button></el-form-item>
+          <el-form-item label="账号" prop="username">
+            <el-input v-model="loginForm.username" placeholder="请输入账号"></el-input>
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="loginForm.password" type="password" placeholder="请输入密码"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleLogin" style="width: 100%;" :loading="loading">登录</el-button>
+          </el-form-item>
         </el-form>
       </el-card>
     </div>
 
-    <!-- 主界面 -->
+    <!-- 主页面 -->
     <div v-if="isLogin" class="container">
-      <!-- 导航 -->
-      <el-menu :default-active="activeTab" mode="horizontal" style="margin-bottom: 20px;">
+      <!-- 导航标签（修复切换事件） -->
+      <el-menu 
+        :default-active="activeTab" 
+        mode="horizontal" 
+        background-color="#fff" 
+        text-color="#333" 
+        active-text-color="#409eff" 
+        style="margin-bottom: 20px;"
+        @select="handleTabChange"
+      >
         <el-menu-item index="employee">员工档案</el-menu-item>
         <el-menu-item index="recruit">招聘台账</el-menu-item>
         <el-menu-item index="training">培训记录</el-menu-item>
-        <el-menu-item index="logout" @click="isLogin=false" style="margin-left: auto;">退出</el-menu-item>
+        <el-menu-item index="logout" @click="handleLogout" style="margin-left: auto;">退出登录</el-menu-item>
       </el-menu>
 
-      <!-- 员工档案 -->
+      <!-- 员工档案台账 -->
       <div v-show="activeTab === 'employee'">
-        <el-card>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-            <span style="font-weight: bold;">员工档案台账</span>
-            <div>
-              <el-input v-model="employeeSearch" placeholder="搜索姓名/身份证" style="width: 200px; margin-right: 10px;" clearable @input="loadEmployeeList"></el-input>
-              <el-button type="primary" @click="openEmpModal">新增</el-button>
-              <el-button type="success" @click="exportEmpExcel">导出</el-button>
+        <el-card shadow="hover">
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 16px; font-weight: bold;">员工档案台账</span>
+              <div>
+                <el-input v-model="employeeSearch" placeholder="搜索姓名/身份证" style="width: 200px; margin-right: 10px;" clearable @input="loadEmployeeList"></el-input>
+                <el-button type="primary" @click="openEmpModal">新增</el-button>
+                <el-button type="success" @click="exportEmpExcel" style="margin-left: 10px;">导出Excel</el-button>
+              </div>
             </div>
-          </div>
-          <el-table :data="employeeList" border stripe :loading="loading">
-            <el-table-column prop="name" label="姓名"></el-table-column>
-            <el-table-column prop="id_card" label="身份证号"></el-table-column>
-            <el-table-column prop="department" label="部门"></el-table-column>
-            <el-table-column label="操作">
+          </template>
+
+          <el-table :data="employeeList" border stripe :loading="loading" style="width: 100%;">
+            <el-table-column prop="name" label="姓名" min-width="100"></el-table-column>
+            <el-table-column prop="id_card" label="身份证号" min-width="180"></el-table-column>
+            <el-table-column prop="department" label="部门" min-width="120"></el-table-column>
+            <el-table-column label="操作" min-width="180">
               <template #default="scope">
-                <el-button size="small" type="primary" @click="editEmp(scope.row)">编辑</el-button>
-                <el-button size="small" type="danger" @click="delEmp(scope.row.id)">删除</el-button>
+                <el-button type="primary" size="small" @click="editEmp(scope.row)">编辑</el-button>
+                <el-button type="danger" size="small" @click="delEmp(scope.row.id)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
-          <el-pagination @size-change="(val)=>{empPage.size=val;loadEmployeeList()}" @current-change="(val)=>{empPage.current=val;loadEmployeeList()}" 
-            :current-page="empPage.current" :page-size="empPage.size" layout="total, sizes, prev, pager, next, jumper" :total="empTotal" style="margin-top: 10px; text-align: center;">
+
+          <el-pagination 
+            @size-change="(val)=>{empPage.size=val;loadEmployeeList()}"
+            @current-change="(val)=>{empPage.current=val;loadEmployeeList()}"
+            :current-page="empPage.current"
+            :page-sizes="[10, 20, 50]"
+            :page-size="empPage.size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="empTotal"
+            style="margin-top: 20px; text-align: center;"
+          >
           </el-pagination>
         </el-card>
       </div>
 
-      <!-- 招聘台账 -->
+      <!-- 招聘管理台账 -->
       <div v-show="activeTab === 'recruit'">
-        <el-card>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-            <span style="font-weight: bold;">招聘管理台账</span>
-            <div>
-              <el-input v-model="recruitSearch" placeholder="搜索姓名/职位" style="width: 200px; margin-right: 10px;" clearable @input="loadRecruitList"></el-input>
-              <el-button type="primary" @click="openRecModal">新增</el-button>
-              <el-button type="success" @click="exportRecExcel">导出</el-button>
+        <el-card shadow="hover">
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 16px; font-weight: bold;">招聘管理台账</span>
+              <div>
+                <el-input v-model="recruitSearch" placeholder="搜索姓名/应聘职位" style="width: 200px; margin-right: 10px;" clearable @input="loadRecruitList"></el-input>
+                <el-button type="primary" @click="openRecModal">新增</el-button>
+                <el-button type="success" @click="exportRecExcel" style="margin-left: 10px;">导出Excel</el-button>
+              </div>
             </div>
-          </div>
-          <el-table :data="recruitList" border stripe :loading="loading">
-            <el-table-column prop="name" label="姓名"></el-table-column>
-            <el-table-column prop="position" label="应聘职位"></el-table-column>
-            <el-table-column prop="phone" label="手机号"></el-table-column>
-            <el-table-column label="操作">
+          </template>
+
+          <el-table :data="recruitList" border stripe :loading="loading" style="width: 100%;">
+            <el-table-column prop="name" label="候选人姓名" min-width="100"></el-table-column>
+            <el-table-column prop="position" label="应聘职位" min-width="120"></el-table-column>
+            <el-table-column prop="phone" label="手机号" min-width="130"></el-table-column>
+            <el-table-column label="操作" min-width="180">
               <template #default="scope">
-                <el-button size="small" type="primary" @click="editRec(scope.row)">编辑</el-button>
-                <el-button size="small" type="danger" @click="delRec(scope.row.id)">删除</el-button>
+                <el-button type="primary" size="small" @click="editRec(scope.row)">编辑</el-button>
+                <el-button type="danger" size="small" @click="delRec(scope.row.id)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
-          <el-pagination @size-change="(val)=>{recPage.size=val;loadRecruitList()}" @current-change="(val)=>{recPage.current=val;loadRecruitList()}" 
-            :current-page="recPage.current" :page-size="recPage.size" layout="total, sizes, prev, pager, next, jumper" :total="recTotal" style="margin-top: 10px; text-align: center;">
+
+          <el-pagination 
+            @size-change="(val)=>{recPage.size=val;loadRecruitList()}"
+            @current-change="(val)=>{recPage.current=val;loadRecruitList()}"
+            :current-page="recPage.current"
+            :page-sizes="[10, 20, 50]"
+            :page-size="recPage.size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="recTotal"
+            style="margin-top: 20px; text-align: center;"
+          >
           </el-pagination>
         </el-card>
       </div>
 
-      <!-- 培训记录 -->
+      <!-- 培训记录台账 -->
       <div v-show="activeTab === 'training'">
-        <el-card>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-            <span style="font-weight: bold;">培训记录台账</span>
-            <div>
-              <el-input v-model="trainSearch" placeholder="搜索员工ID/课程ID" style="width: 200px; margin-right: 10px;" clearable @input="loadTrainList"></el-input>
-              <el-button type="primary" @click="openTrainModal">新增</el-button>
-              <el-button type="success" @click="exportTrainExcel">导出</el-button>
+        <el-card shadow="hover">
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 16px; font-weight: bold;">培训记录台账</span>
+              <div>
+                <el-input v-model="trainSearch" placeholder="搜索员工ID/课程ID" style="width: 200px; margin-right: 10px;" clearable @input="loadTrainList"></el-input>
+                <el-button type="primary" @click="openTrainModal">新增</el-button>
+                <el-button type="success" @click="exportTrainExcel" style="margin-left: 10px;">导出Excel</el-button>
+              </div>
             </div>
-          </div>
-          <el-table :data="trainList" border stripe :loading="loading">
-            <el-table-column prop="employee_id" label="员工ID"></el-table-column>
-            <el-table-column prop="course_id" label="课程ID"></el-table-column>
-            <el-table-column prop="attendance" label="考勤状态">
-              <template #default="scope"><el-tag :type="scope.row.attendance==='出勤'?'success':'danger'">{{scope.row.attendance}}</el-tag></template>
-            </el-table-column>
-            <el-table-column label="操作">
+          </template>
+
+          <el-table :data="trainList" border stripe :loading="loading" style="width: 100%;">
+            <el-table-column prop="employee_id" label="员工ID" min-width="100"></el-table-column>
+            <el-table-column prop="course_id" label="课程ID" min-width="150"></el-table-column>
+            <el-table-column prop="attendance" label="考勤状态" min-width="100">
               <template #default="scope">
-                <el-button size="small" type="primary" @click="editTrain(scope.row)">编辑</el-button>
-                <el-button size="small" type="danger" @click="delTrain(scope.row.id)">删除</el-button>
+                <el-tag :type="scope.row.attendance === '出勤' ? 'success' : 'danger'">
+                  {{ scope.row.attendance }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="180">
+              <template #default="scope">
+                <el-button type="primary" size="small" @click="editTrain(scope.row)">编辑</el-button>
+                <el-button type="danger" size="small" @click="delTrain(scope.row.id)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
-          <el-pagination @size-change="(val)=>{trainPage.size=val;loadTrainList()}" @current-change="(val)=>{trainPage.current=val;loadTrainList()}" 
-            :current-page="trainPage.current" :page-size="trainPage.size" layout="total, sizes, prev, pager, next, jumper" :total="trainTotal" style="margin-top: 10px; text-align: center;">
+
+          <el-pagination 
+            @size-change="(val)=>{trainPage.size=val;loadTrainList()}"
+            @current-change="(val)=>{trainPage.current=val;loadTrainList()}"
+            :current-page="trainPage.current"
+            :page-sizes="[10, 20, 50]"
+            :page-size="trainPage.size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="trainTotal"
+            style="margin-top: 20px; text-align: center;"
+          >
           </el-pagination>
         </el-card>
       </div>
 
-      <!-- 员工弹窗 -->
+      <!-- 员工编辑弹窗 -->
       <el-dialog v-model="empModalShow" :title="empModalTitle" width="400px">
         <el-form :model="empForm" :rules="empRules" ref="empFormRef" label-width="80px">
-          <el-form-item label="姓名" prop="name"><el-input v-model="empForm.name"></el-input></el-form-item>
-          <el-form-item label="身份证" prop="id_card"><el-input v-model="empForm.id_card"></el-input></el-form-item>
-          <el-form-item label="部门" prop="department"><el-input v-model="empForm.department"></el-input></el-form-item>
+          <el-form-item label="姓名" prop="name">
+            <el-input v-model="empForm.name" placeholder="请输入员工姓名"></el-input>
+          </el-form-item>
+          <el-form-item label="身份证号" prop="id_card">
+            <el-input v-model="empForm.id_card" placeholder="请输入身份证号"></el-input>
+          </el-form-item>
+          <el-form-item label="部门" prop="department">
+            <el-input v-model="empForm.department" placeholder="请输入所属部门"></el-input>
+          </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="empModalShow=false">取消</el-button>
@@ -137,12 +197,18 @@
         </template>
       </el-dialog>
 
-      <!-- 招聘弹窗 -->
+      <!-- 招聘编辑弹窗 -->
       <el-dialog v-model="recModalShow" :title="recModalTitle" width="400px">
         <el-form :model="recForm" :rules="recRules" ref="recFormRef" label-width="80px">
-          <el-form-item label="姓名" prop="name"><el-input v-model="recForm.name"></el-input></el-form-item>
-          <el-form-item label="职位" prop="position"><el-input v-model="recForm.position"></el-input></el-form-item>
-          <el-form-item label="手机号" prop="phone"><el-input v-model="recForm.phone"></el-input></el-form-item>
+          <el-form-item label="姓名" prop="name">
+            <el-input v-model="recForm.name" placeholder="请输入候选人姓名"></el-input>
+          </el-form-item>
+          <el-form-item label="应聘职位" prop="position">
+            <el-input v-model="recForm.position" placeholder="请输入应聘职位"></el-input>
+          </el-form-item>
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="recForm.phone" placeholder="请输入手机号"></el-input>
+          </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="recModalShow=false">取消</el-button>
@@ -150,13 +216,20 @@
         </template>
       </el-dialog>
 
-      <!-- 培训弹窗 -->
+      <!-- 培训记录编辑弹窗 -->
       <el-dialog v-model="trainModalShow" :title="trainModalTitle" width="400px">
         <el-form :model="trainForm" :rules="trainRules" ref="trainFormRef" label-width="80px">
-          <el-form-item label="员工ID" prop="employee_id"><el-input v-model="trainForm.employee_id"></el-input></el-form-item>
-          <el-form-item label="课程ID" prop="course_id"><el-input v-model="trainForm.course_id"></el-input></el-form-item>
-          <el-form-item label="考勤" prop="attendance">
-            <el-select v-model="trainForm.attendance"><el-option label="出勤" value="出勤"></el-option><el-option label="缺勤" value="缺勤"></el-option></el-select>
+          <el-form-item label="员工ID" prop="employee_id">
+            <el-input v-model="trainForm.employee_id" placeholder="请输入员工ID"></el-input>
+          </el-form-item>
+          <el-form-item label="课程ID" prop="course_id">
+            <el-input v-model="trainForm.course_id" placeholder="请输入课程ID"></el-input>
+          </el-form-item>
+          <el-form-item label="考勤状态" prop="attendance">
+            <el-select v-model="trainForm.attendance" placeholder="请选择考勤状态">
+              <el-option label="出勤" value="出勤"></el-option>
+              <el-option label="缺勤" value="缺勤"></el-option>
+            </el-select>
           </el-form-item>
         </el-form>
         <template #footer>
@@ -173,43 +246,31 @@
 
     createApp({
       setup() {
-        // Supabase初始化
+        // Supabase初始化（移除columns参数拦截）
         const supabase = window.supabase.createClient(
           'https://fgscptvyyxhqkbpriukq.supabase.co',
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnc2NwdHZ5eXhocWticHJpdWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDg4NDEsImV4cCI6MjA4OTIyNDg0MX0.else3hnnFpVh3j2wfS7vY4ku9xneQ5mh9sEcVUjrH5s',
-          { global: { fetch: (url, opt) => fetch(url.replace(/\?columns=.*$/, ''), opt) } }
+          { 
+            global: { 
+              fetch: (url, opt) => fetch(url.replace(/\?columns=.*$/, ''), opt) 
+            } 
+          }
         );
 
         // 基础状态
         const isLogin = ref(false);
         const loading = ref(false);
-        const activeTab = ref('employee');
+        const activeTab = ref('employee'); // 默认选中员工档案
 
-        // 登录
+        // 登录表单
         const loginForm = reactive({ username: 'admin', password: '123456' });
         const loginRules = reactive({
-          username: [{ required: true, message: '请输入账号' }],
-          password: [{ required: true, message: '请输入密码' }]
+          username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+          password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
         });
         const loginFormRef = ref(null);
-const handleLogin = async () => {
-  try {
-    loading.value = true;
-    await loginFormRef.value.validate();
-    if (loginForm.username === 'admin' && loginForm.password === '123456') {
-      isLogin.value = true;
-      ElMessage.success('登录成功');
-      // 增加延迟加载，确保Supabase数据已同步
-      setTimeout(() => {
-        loadEmployeeList(); 
-        loadRecruitList(); 
-        loadTrainList();
-      }, 500);
-    } else ElMessage.error('账号密码错误');
-  } catch (e) { ElMessage.error('登录失败'); } finally { loading.value = false; }
-};
 
-        // 员工档案
+        // ========== 员工档案 ==========
         const employeeList = ref([]);
         const employeeSearch = ref('');
         const empPage = reactive({ current: 1, size: 10 });
@@ -218,48 +279,113 @@ const handleLogin = async () => {
         const empModalTitle = ref('新增员工');
         const empForm = reactive({ id: '', name: '', id_card: '', department: '' });
         const empRules = reactive({
-          name: [{ required: true, message: '请输入姓名' }],
-          id_card: [{ required: true, message: '请输入身份证' }],
-          department: [{ required: true, message: '请输入部门' }]
+          name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+          id_card: [{ required: true, message: '请输入身份证号', trigger: 'blur' }],
+          department: [{ required: true, message: '请输入部门', trigger: 'blur' }]
         });
         const empFormRef = ref(null);
 
+        // 加载员工数据
         const loadEmployeeList = async () => {
           loading.value = true;
-          let q = supabase.from('employees').select('*', { count: 'exact' });
-          if (employeeSearch.value) q = q.or(`name.ilike.%${employeeSearch.value}%,id_card.ilike.%${employeeSearch.value}%`);
-          q = q.range((empPage.current-1)*empPage.size, empPage.current*empPage.size-1);
-          const { data, count, error } = await q;
-          if (error) ElMessage.error('加载失败：' + error.message);
-          else { employeeList.value = data || []; empTotal.value = count || 0; }
-          loading.value = false;
+          try {
+            let query = supabase.from('employees').select('*', { count: 'exact' });
+            // 搜索条件
+            if (employeeSearch.value) {
+              query = query.or(`name.ilike.%${employeeSearch.value}%,id_card.ilike.%${employeeSearch.value}%`);
+            }
+            // 分页
+            const from = (empPage.current - 1) * empPage.size;
+            const to = from + empPage.size - 1;
+            query = query.range(from, to);
+
+            const { data, count, error } = await query;
+            if (error) throw error;
+            employeeList.value = data || [];
+            empTotal.value = count || 0;
+          } catch (err) {
+            ElMessage.error('加载员工数据失败：' + err.message);
+          } finally {
+            loading.value = false;
+          }
         };
 
-        const openEmpModal = () => { empModalTitle.value = '新增员工'; empForm.id = ''; empForm.name = ''; empForm.id_card = ''; empForm.department = ''; empModalShow.value = true; };
-        const editEmp = (row) => { empModalTitle.value = '编辑员工'; Object.assign(empForm, row); empModalShow.value = true; };
+        // 打开员工弹窗
+        const openEmpModal = () => {
+          empModalTitle.value = '新增员工';
+          empForm.id = '';
+          empForm.name = '';
+          empForm.id_card = '';
+          empForm.department = '';
+          empModalShow.value = true;
+        };
+
+        // 编辑员工
+        const editEmp = (row) => {
+          empModalTitle.value = '编辑员工';
+          empForm.id = row.id;
+          empForm.name = row.name;
+          empForm.id_card = row.id_card;
+          empForm.department = row.department;
+          empModalShow.value = true;
+        };
+
+        // 保存员工
         const saveEmp = async () => {
-          await empFormRef.value.validate();
-          const { error } = empForm.id 
-            ? await supabase.from('employees').update(empForm).eq('id', empForm.id)
-            : await supabase.from('employees').insert([empForm]);
-          if (error) ElMessage.error('保存失败：' + error.message);
-          else { ElMessage.success('保存成功'); empModalShow.value = false; loadEmployeeList(); }
+          try {
+            await empFormRef.value.validate();
+            const empData = {
+              name: empForm.name,
+              id_card: empForm.id_card,
+              department: empForm.department
+            };
+
+            let error;
+            if (empForm.id) {
+              // 编辑
+              ({ error } = await supabase.from('employees').update(empData).eq('id', empForm.id));
+            } else {
+              // 新增
+              ({ error } = await supabase.from('employees').insert([empData]));
+            }
+
+            if (error) throw error;
+            ElMessage.success(empForm.id ? '编辑成功' : '新增成功');
+            empModalShow.value = false;
+            loadEmployeeList();
+          } catch (err) {
+            ElMessage.error('保存失败：' + err.message);
+          }
         };
+
+        // 删除员工
         const delEmp = async (id) => {
-          await ElMessageBox.confirm('确定删除？');
-          const { error } = await supabase.from('employees').delete().eq('id', id);
-          if (error) ElMessage.error('删除失败：' + error.message);
-          else { ElMessage.success('删除成功'); loadEmployeeList(); }
+          try {
+            await ElMessageBox.confirm('确定删除该员工？', '提示', { type: 'warning' });
+            const { error } = await supabase.from('employees').delete().eq('id', id);
+            if (error) throw error;
+            ElMessage.success('删除成功');
+            loadEmployeeList();
+          } catch (err) {
+            if (err !== 'cancel') ElMessage.error('删除失败：' + err.message);
+          }
         };
+
+        // 导出员工Excel
         const exportEmpExcel = () => {
           if (!employeeList.value.length) return ElMessage.warning('暂无数据');
-          const ws = XLSX.utils.json_to_sheet(employeeList.value.map(i=>({姓名:i.name,身份证号:i.id_card,部门:i.department})));
+          const ws = XLSX.utils.json_to_sheet(employeeList.value.map(item => ({
+            姓名: item.name,
+            身份证号: item.id_card,
+            部门: item.department
+          })));
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, '员工档案');
           XLSX.writeFile(wb, `员工档案_${new Date().toLocaleDateString()}.xlsx`);
+          ElMessage.success('导出成功');
         };
 
-        // 招聘台账
+        // ========== 招聘台账 ==========
         const recruitList = ref([]);
         const recruitSearch = ref('');
         const recPage = reactive({ current: 1, size: 10 });
@@ -268,47 +394,112 @@ const handleLogin = async () => {
         const recModalTitle = ref('新增候选人');
         const recForm = reactive({ id: '', name: '', position: '', phone: '' });
         const recRules = reactive({
-          name: [{ required: true, message: '请输入姓名' }],
-          position: [{ required: true, message: '请输入职位' }]
+          name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+          position: [{ required: true, message: '请输入应聘职位', trigger: 'blur' }]
         });
         const recFormRef = ref(null);
 
+        // 加载招聘数据
         const loadRecruitList = async () => {
           loading.value = true;
-          let q = supabase.from('recruitment').select('*', { count: 'exact' });
-          if (recruitSearch.value) q = q.or(`name.ilike.%${recruitSearch.value}%,position.ilike.%${recruitSearch.value}%`);
-          q = q.range((recPage.current-1)*recPage.size, recPage.current*recPage.size-1);
-          const { data, count, error } = await q;
-          if (error) ElMessage.error('加载失败：' + error.message);
-          else { recruitList.value = data || []; recTotal.value = count || 0; }
-          loading.value = false;
+          try {
+            let query = supabase.from('recruitment').select('*', { count: 'exact' });
+            // 搜索条件
+            if (recruitSearch.value) {
+              query = query.or(`name.ilike.%${recruitSearch.value}%,position.ilike.%${recruitSearch.value}%`);
+            }
+            // 分页
+            const from = (recPage.current - 1) * recPage.size;
+            const to = from + recPage.size - 1;
+            query = query.range(from, to);
+
+            const { data, count, error } = await query;
+            if (error) throw error;
+            recruitList.value = data || [];
+            recTotal.value = count || 0;
+          } catch (err) {
+            ElMessage.error('加载招聘数据失败：' + err.message);
+          } finally {
+            loading.value = false;
+          }
         };
 
-        const openRecModal = () => { recModalTitle.value = '新增候选人'; recForm.id = ''; recForm.name = ''; recForm.position = ''; recForm.phone = ''; recModalShow.value = true; };
-        const editRec = (row) => { recModalTitle.value = '编辑候选人'; Object.assign(recForm, row); recModalShow.value = true; };
+        // 打开招聘弹窗
+        const openRecModal = () => {
+          recModalTitle.value = '新增候选人';
+          recForm.id = '';
+          recForm.name = '';
+          recForm.position = '';
+          recForm.phone = '';
+          recModalShow.value = true;
+        };
+
+        // 编辑招聘
+        const editRec = (row) => {
+          recModalTitle.value = '编辑候选人';
+          recForm.id = row.id;
+          recForm.name = row.name;
+          recForm.position = row.position;
+          recForm.phone = row.phone;
+          recModalShow.value = true;
+        };
+
+        // 保存招聘
         const saveRec = async () => {
-          await recFormRef.value.validate();
-          const { error } = recForm.id 
-            ? await supabase.from('recruitment').update(recForm).eq('id', recForm.id)
-            : await supabase.from('recruitment').insert([recForm]);
-          if (error) ElMessage.error('保存失败：' + error.message);
-          else { ElMessage.success('保存成功'); recModalShow.value = false; loadRecruitList(); }
+          try {
+            await recFormRef.value.validate();
+            const recData = {
+              name: recForm.name,
+              position: recForm.position,
+              phone: recForm.phone
+            };
+
+            let error;
+            if (recForm.id) {
+              // 编辑
+              ({ error } = await supabase.from('recruitment').update(recData).eq('id', recForm.id));
+            } else {
+              // 新增
+              ({ error } = await supabase.from('recruitment').insert([recData]));
+            }
+
+            if (error) throw error;
+            ElMessage.success(recForm.id ? '编辑成功' : '新增成功');
+            recModalShow.value = false;
+            loadRecruitList();
+          } catch (err) {
+            ElMessage.error('保存失败：' + err.message);
+          }
         };
+
+        // 删除招聘
         const delRec = async (id) => {
-          await ElMessageBox.confirm('确定删除？');
-          const { error } = await supabase.from('recruitment').delete().eq('id', id);
-          if (error) ElMessage.error('删除失败：' + error.message);
-          else { ElMessage.success('删除成功'); loadRecruitList(); }
+          try {
+            await ElMessageBox.confirm('确定删除该候选人？', '提示', { type: 'warning' });
+            const { error } = await supabase.from('recruitment').delete().eq('id', id);
+            if (error) throw error;
+            ElMessage.success('删除成功');
+            loadRecruitList();
+          } catch (err) {
+            if (err !== 'cancel') ElMessage.error('删除失败：' + err.message);
+          }
         };
+
+        // 导出招聘Excel
         const exportRecExcel = () => {
           if (!recruitList.value.length) return ElMessage.warning('暂无数据');
-          const ws = XLSX.utils.json_to_sheet(recruitList.value.map(i=>({姓名:i.name,应聘职位:i.position,手机号:i.phone})));
+          const ws = XLSX.utils.json_to_sheet(recruitList.value.map(item => ({
+            姓名: item.name,
+            应聘职位: item.position,
+            手机号: item.phone
+          })));
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, '招聘台账');
           XLSX.writeFile(wb, `招聘台账_${new Date().toLocaleDateString()}.xlsx`);
+          ElMessage.success('导出成功');
         };
 
-        // 培训记录
+        // ========== 培训记录 ==========
         const trainList = ref([]);
         const trainSearch = ref('');
         const trainPage = reactive({ current: 1, size: 10 });
@@ -317,55 +508,182 @@ const handleLogin = async () => {
         const trainModalTitle = ref('新增培训记录');
         const trainForm = reactive({ id: '', employee_id: '', course_id: '', attendance: '出勤' });
         const trainRules = reactive({
-          employee_id: [{ required: true, message: '请输入员工ID' }],
-          course_id: [{ required: true, message: '请输入课程ID' }]
+          employee_id: [{ required: true, message: '请输入员工ID', trigger: 'blur' }],
+          course_id: [{ required: true, message: '请输入课程ID', trigger: 'blur' }]
         });
         const trainFormRef = ref(null);
 
+        // 加载培训数据
         const loadTrainList = async () => {
           loading.value = true;
-          let q = supabase.from('training_records').select('*', { count: 'exact' });
-          if (trainSearch.value) q = q.or(`employee_id.ilike.%${trainSearch.value}%,course_id.ilike.%${trainSearch.value}%`);
-          q = q.range((trainPage.current-1)*trainPage.size, trainPage.current*trainPage.size-1);
-          const { data, count, error } = await q;
-          if (error) ElMessage.error('加载失败：' + error.message);
-          else { trainList.value = data || []; trainTotal.value = count || 0; }
-          loading.value = false;
+          try {
+            let query = supabase.from('training_records').select('*', { count: 'exact' });
+            // 搜索条件
+            if (trainSearch.value) {
+              query = query.or(`employee_id.ilike.%${trainSearch.value}%,course_id.ilike.%${trainSearch.value}%`);
+            }
+            // 分页
+            const from = (trainPage.current - 1) * trainPage.size;
+            const to = from + trainPage.size - 1;
+            query = query.range(from, to);
+
+            const { data, count, error } = await query;
+            if (error) throw error;
+            trainList.value = data || [];
+            trainTotal.value = count || 0;
+          } catch (err) {
+            ElMessage.error('加载培训数据失败：' + err.message);
+          } finally {
+            loading.value = false;
+          }
         };
 
-        const openTrainModal = () => { trainModalTitle.value = '新增培训记录'; trainForm.id = ''; trainForm.employee_id = ''; trainForm.course_id = ''; trainForm.attendance = '出勤'; trainModalShow.value = true; };
-        const editTrain = (row) => { trainModalTitle.value = '编辑培训记录'; Object.assign(trainForm, row); trainModalShow.value = true; };
+        // 打开培训弹窗
+        const openTrainModal = () => {
+          trainModalTitle.value = '新增培训记录';
+          trainForm.id = '';
+          trainForm.employee_id = '';
+          trainForm.course_id = '';
+          trainForm.attendance = '出勤';
+          trainModalShow.value = true;
+        };
+
+        // 编辑培训
+        const editTrain = (row) => {
+          trainModalTitle.value = '编辑培训记录';
+          trainForm.id = row.id;
+          trainForm.employee_id = row.employee_id;
+          trainForm.course_id = row.course_id;
+          trainForm.attendance = row.attendance;
+          trainModalShow.value = true;
+        };
+
+        // 保存培训
         const saveTrain = async () => {
-          await trainFormRef.value.validate();
-          const { error } = trainForm.id 
-            ? await supabase.from('training_records').update(trainForm).eq('id', trainForm.id)
-            : await supabase.from('training_records').insert([trainForm]);
-          if (error) ElMessage.error('保存失败：' + error.message);
-          else { ElMessage.success('保存成功'); trainModalShow.value = false; loadTrainList(); }
+          try {
+            await trainFormRef.value.validate();
+            const trainData = {
+              employee_id: trainForm.employee_id,
+              course_id: trainForm.course_id,
+              attendance: trainForm.attendance
+            };
+
+            let error;
+            if (trainForm.id) {
+              // 编辑
+              ({ error } = await supabase.from('training_records').update(trainData).eq('id', trainForm.id));
+            } else {
+              // 新增
+              ({ error } = await supabase.from('training_records').insert([trainData]));
+            }
+
+            if (error) throw error;
+            ElMessage.success(trainForm.id ? '编辑成功' : '新增成功');
+            trainModalShow.value = false;
+            loadTrainList();
+          } catch (err) {
+            ElMessage.error('保存失败：' + err.message);
+          }
         };
+
+        // 删除培训
         const delTrain = async (id) => {
-          await ElMessageBox.confirm('确定删除？');
-          const { error } = await supabase.from('training_records').delete().eq('id', id);
-          if (error) ElMessage.error('删除失败：' + error.message);
-          else { ElMessage.success('删除成功'); loadTrainList(); }
+          try {
+            await ElMessageBox.confirm('确定删除该培训记录？', '提示', { type: 'warning' });
+            const { error } = await supabase.from('training_records').delete().eq('id', id);
+            if (error) throw error;
+            ElMessage.success('删除成功');
+            loadTrainList();
+          } catch (err) {
+            if (err !== 'cancel') ElMessage.error('删除失败：' + err.message);
+          }
         };
+
+        // 导出培训Excel
         const exportTrainExcel = () => {
           if (!trainList.value.length) return ElMessage.warning('暂无数据');
-          const ws = XLSX.utils.json_to_sheet(trainList.value.map(i=>({员工ID:i.employee_id,课程ID:i.course_id,考勤状态:i.attendance})));
+          const ws = XLSX.utils.json_to_sheet(trainList.value.map(item => ({
+            员工ID: item.employee_id,
+            课程ID: item.course_id,
+            考勤状态: item.attendance
+          })));
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, '培训记录');
           XLSX.writeFile(wb, `培训记录_${new Date().toLocaleDateString()}.xlsx`);
+          ElMessage.success('导出成功');
+        };
+
+        // ========== 通用方法 ==========
+        // 登录
+        const handleLogin = async () => {
+          try {
+            loading.value = true;
+            await loginFormRef.value.validate();
+            // 简单密码验证
+            if (loginForm.username === 'admin' && loginForm.password === '123456') {
+              isLogin.value = true;
+              ElMessage.success('登录成功');
+              // 延迟加载数据，避免Supabase同步延迟
+              setTimeout(() => {
+                loadEmployeeList();
+                loadRecruitList();
+                loadTrainList();
+              }, 500);
+            } else {
+              ElMessage.error('账号或密码错误');
+            }
+          } catch (err) {
+            ElMessage.error('登录失败：' + err.message);
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        // 退出登录
+        const handleLogout = () => {
+          isLogin.value = false;
+          ElMessage.info('已退出登录');
+        };
+
+        // 标签切换
+        const handleTabChange = (tabIndex) => {
+          activeTab.value = tabIndex;
+          // 切换标签时重新加载对应数据
+          switch (tabIndex) {
+            case 'employee':
+              loadEmployeeList();
+              break;
+            case 'recruit':
+              loadRecruitList();
+              break;
+            case 'training':
+              loadTrainList();
+              break;
+            case 'logout':
+              handleLogout();
+              break;
+          }
         };
 
         return {
+          // 基础状态
           isLogin, loading, activeTab,
+          // 登录
           loginForm, loginRules, loginFormRef, handleLogin,
-          employeeList, employeeSearch, empPage, empTotal, empModalShow, empModalTitle, empForm, empRules, empFormRef,
+          // 员工档案
+          employeeList, employeeSearch, empPage, empTotal,
+          empModalShow, empModalTitle, empForm, empRules, empFormRef,
           loadEmployeeList, openEmpModal, editEmp, saveEmp, delEmp, exportEmpExcel,
-          recruitList, recruitSearch, recPage, recTotal, recModalShow, recModalTitle, recForm, recRules, recFormRef,
+          // 招聘台账
+          recruitList, recruitSearch, recPage, recTotal,
+          recModalShow, recModalTitle, recForm, recRules, recFormRef,
           loadRecruitList, openRecModal, editRec, saveRec, delRec, exportRecExcel,
-          trainList, trainSearch, trainPage, trainTotal, trainModalShow, trainModalTitle, trainForm, trainRules, trainFormRef,
-          loadTrainList, openTrainModal, editTrain, saveTrain, delTrain, exportTrainExcel
+          // 培训记录
+          trainList, trainSearch, trainPage, trainTotal,
+          trainModalShow, trainModalTitle, trainForm, trainRules, trainFormRef,
+          loadTrainList, openTrainModal, editTrain, saveTrain, delTrain, exportTrainExcel,
+          // 通用
+          handleLogout, handleTabChange
         };
       }
     }).use(ElementPlus).mount('#app');
