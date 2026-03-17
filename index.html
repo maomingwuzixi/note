@@ -411,10 +411,9 @@
 
     createApp({
       setup() {
-        // ========== 关键配置：替换成你自己的Supabase信息 ==========
+        // ========== 关键配置：已填入正确的Supabase信息 ==========
         const supabaseUrl = 'https://fgscptvyyxhqkbpriukq.supabase.co';
-        // 👇 必须替换成你从Supabase后台复制的anon public key（Settings→API→anon/public）
-        const supabaseKey = '替换成你的真实Anon Key';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnc2NwdHZ5eXhocWticHJpdWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDg4NDEsImV4cCI6MjA4OTIyNDg0MX0.else3hnnFpVh3j2wfS7vY4ku9xneQ5mh9sEcVUjrH5s';
         
         // 初始化Supabase客户端（修复406错误的核心配置）
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey, {
