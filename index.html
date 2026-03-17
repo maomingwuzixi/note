@@ -192,17 +192,22 @@
           password: [{ required: true, message: '请输入密码' }]
         });
         const loginFormRef = ref(null);
-        const handleLogin = async () => {
-          try {
-            loading.value = true;
-            await loginFormRef.value.validate();
-            if (loginForm.username === 'admin' && loginForm.password === '123456') {
-              isLogin.value = true;
-              loadEmployeeList(); loadRecruitList(); loadTrainList();
-              ElMessage.success('登录成功');
-            } else ElMessage.error('账号密码错误');
-          } catch (e) { ElMessage.error('登录失败'); } finally { loading.value = false; }
-        };
+const handleLogin = async () => {
+  try {
+    loading.value = true;
+    await loginFormRef.value.validate();
+    if (loginForm.username === 'admin' && loginForm.password === '123456') {
+      isLogin.value = true;
+      ElMessage.success('登录成功');
+      // 增加延迟加载，确保Supabase数据已同步
+      setTimeout(() => {
+        loadEmployeeList(); 
+        loadRecruitList(); 
+        loadTrainList();
+      }, 500);
+    } else ElMessage.error('账号密码错误');
+  } catch (e) { ElMessage.error('登录失败'); } finally { loading.value = false; }
+};
 
         // 员工档案
         const employeeList = ref([]);
