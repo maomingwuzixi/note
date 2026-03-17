@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HR台账管理系统</title>
-  <!-- 稳定的Element Plus样式CDN -->
   <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
@@ -19,7 +18,6 @@
 </head>
 <body>
   <div id="app">
-    <!-- 登录页面 -->
     <div v-if="!isLogin" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
       <el-card shadow="hover" style="width: 400px;">
         <h2 style="text-align: center; color: #409eff; margin-bottom: 20px;">HR台账管理系统</h2>
@@ -37,9 +35,7 @@
       </el-card>
     </div>
 
-    <!-- 主页面 -->
     <div v-if="isLogin" class="container">
-      <!-- 导航标签 -->
       <el-menu 
         :default-active="activeTab" 
         mode="horizontal" 
@@ -55,7 +51,7 @@
         <el-menu-item index="logout" @click="handleLogout" style="margin-left: auto;">退出登录</el-menu-item>
       </el-menu>
 
-      <!-- 员工档案台账 -->
+      <!-- 员工档案 -->
       <div v-show="activeTab === 'employee'">
         <el-card shadow="hover">
           <template #header>
@@ -143,7 +139,7 @@
         </template>
       </el-dialog>
 
-      <!-- 员工批量编辑弹窗 -->
+      <!-- 员工批量编辑 -->
       <el-dialog v-model="batchEmpModalShow" title="批量编辑员工档案" width="400px">
         <el-form :model="batchEmpForm" ref="batchEmpFormRef" label-width="80px">
           <el-form-item label="部门">
@@ -203,11 +199,7 @@
                 {{ scope.row.interview_date ? scope.row.interview_date.split('T')[0] : '-' }}
               </template>
             </el-table-column>
-            <el-table-column prop="expected_salary" label="薪资期望" min-width="100">
-              <template #default="scope">
-                {{ scope.row.expected_salary ? '¥' + scope.row.expected_salary : '-' }}
-              </template>
-            </el-table-column>
+            <el-table-column prop="expected_salary" label="薪资期望" min-width="100"></el-table-column>
             <el-table-column prop="recruit_status" label="招聘状态" min-width="100">
               <template #default="scope">
                 <el-tag :type="scope.row.recruit_status === '已录用' ? 'success' : (scope.row.recruit_status === '面试中' ? 'warning' : 'info')">
@@ -270,7 +262,7 @@
         </template>
       </el-dialog>
 
-      <!-- 招聘批量编辑弹窗 -->
+      <!-- 招聘批量编辑 -->
       <el-dialog v-model="batchRecModalShow" title="批量编辑招聘记录" width="400px">
         <el-form :model="batchRecForm" ref="batchRecFormRef" label-width="80px">
           <el-form-item label="招聘状态">
@@ -291,7 +283,7 @@
         </template>
       </el-dialog>
 
-      <!-- 培训记录台账 -->
+      <!-- 培训记录 -->
       <div v-show="activeTab === 'training'">
         <el-card shadow="hover">
           <template #header>
@@ -404,7 +396,7 @@
         </template>
       </el-dialog>
 
-      <!-- 培训批量编辑弹窗 -->
+      <!-- 培训批量编辑 -->
       <el-dialog v-model="batchTrainModalShow" title="批量编辑培训记录" width="400px">
         <el-form :model="batchTrainForm" ref="batchTrainFormRef" label-width="80px">
           <el-form-item label="考勤状态">
@@ -439,31 +431,30 @@
 
     createApp({
       setup() {
-        // Supabase初始化
+        // 这里是你的 Supabase 配置
         const supabase = window.supabase.createClient(
           'https://fgscptvyyxhqkbpriukq.supabase.co',
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnc2NwdHZ5eXhocWticHJpdWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDg4NDEsImV4cCI6MjA4OTIyNDg0MX0.else3hnnFpVh3j2wfS7vY4ku9xneQ5mh9sEcVUjrH5s'
         );
 
-        // 基础状态
         const isLogin = ref(false);
         const loading = ref(false);
         const activeTab = ref('employee');
 
-        // 登录表单
-        const loginForm = reactive({ username: 'admin', password: '123456' });
+        // 登录表单：初始为空，无硬编码账号密码
+        const loginForm = reactive({ username: '', password: '' });
         const loginRules = reactive({
           username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
           password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
         });
         const loginFormRef = ref(null);
 
-        // ===================== 员工档案模块 =====================
+        // ===================== 员工模块 =====================
         const employeeList = ref([]);
         const employeeSearch = ref('');
         const empPage = reactive({ current: 1, size: 10 });
         const empTotal = ref(0);
-        const selectedEmpRows = ref([]); // 批量选择的员工
+        const selectedEmpRows = ref([]);
         
         const empModalShow = ref(false);
         const empModalTitle = ref('新增员工');
@@ -475,30 +466,25 @@
         });
         const empFormRef = ref(null);
 
-        // 批量操作
         const batchEmpModalShow = ref(false);
         const batchEmpForm = reactive({ department: '', entry_date: '' });
-        const batchEmpFormRef = ref(null);
 
-        // 加载员工数据
         const loadEmployeeList = async () => {
           loading.value = true;
           try {
             let query = supabase.from('employees').select('*', { count: 'exact' });
             if (employeeSearch.value) {
-              const searchStr = '%' + employeeSearch.value + '%';
-              query = query.or('name.ilike.' + searchStr + ',id_card.ilike.' + searchStr);
+              const s = '%' + employeeSearch.value + '%';
+              query = query.or('name.ilike.' + s + ',id_card.ilike.' + s);
             }
             const from = (empPage.current - 1) * empPage.size;
             const to = from + empPage.size - 1;
-            query = query.range(from, to);
-
-            const { data, count, error } = await query;
+            const { data, count, error } = await query.range(from, to);
             if (error) throw error;
             employeeList.value = data || [];
             empTotal.value = count || 0;
           } catch (err) {
-            ElMessage.error('加载员工数据失败：' + err.message);
+            ElMessage.error('加载失败：' + err.message);
           } finally {
             loading.value = false;
           }
@@ -506,43 +492,27 @@
 
         const openEmpModal = () => {
           empModalTitle.value = '新增员工';
-          empForm.id = '';
-          empForm.name = '';
-          empForm.id_card = '';
-          empForm.department = '';
-          empForm.entry_date = '';
+          Object.assign(empForm, { id: '', name: '', id_card: '', department: '', entry_date: '' });
           empModalShow.value = true;
         };
 
         const editEmp = (row) => {
           empModalTitle.value = '编辑员工';
-          empForm.id = row.id;
-          empForm.name = row.name;
-          empForm.id_card = row.id_card;
-          empForm.department = row.department;
-          empForm.entry_date = row.entry_date ? row.entry_date.split('T')[0] : '';
+          Object.assign(empForm, row);
+          empForm.entry_date = row.entry_date?.split('T')[0] || '';
           empModalShow.value = true;
         };
 
         const saveEmp = async () => {
           try {
             await empFormRef.value.validate();
-            const empData = {
-              name: empForm.name,
-              id_card: empForm.id_card,
-              department: empForm.department,
-              entry_date: empForm.entry_date
-            };
-
-            let error;
+            const data = { name: empForm.name, id_card: empForm.id_card, department: empForm.department, entry_date: empForm.entry_date };
             if (empForm.id) {
-              ({ error } = await supabase.from('employees').update(empData).eq('id', empForm.id));
+              await supabase.from('employees').update(data).eq('id', empForm.id);
             } else {
-              ({ error } = await supabase.from('employees').insert([empData]));
+              await supabase.from('employees').insert([data]);
             }
-
-            if (error) throw error;
-            ElMessage.success(empForm.id ? '编辑成功' : '新增成功');
+            ElMessage.success('保存成功');
             empModalShow.value = false;
             loadEmployeeList();
           } catch (err) {
@@ -552,646 +522,304 @@
 
         const delEmp = async (id) => {
           try {
-            await ElMessageBox.confirm('确定删除该员工？', '提示', { type: 'warning' });
-            const { error } = await supabase.from('employees').delete().eq('id', id);
-            if (error) throw error;
+            await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' });
+            await supabase.from('employees').delete().eq('id', id);
             ElMessage.success('删除成功');
             loadEmployeeList();
           } catch (err) {
-            if (err !== 'cancel') ElMessage.error('删除失败：' + err.message);
+            if (err !== 'cancel') ElMessage.error('删除失败');
           }
         };
 
-        const batchEditEmp = () => {
-          batchEmpModalShow.value = true;
-          batchEmpForm.department = '';
-          batchEmpForm.entry_date = '';
-        };
-
+        const batchEditEmp = () => { batchEmpModalShow.value = true; };
         const saveBatchEmp = async () => {
           try {
-            const ids = selectedEmpRows.value.map(row => row.id);
-            const updateData = {};
-            if (batchEmpForm.department) updateData.department = batchEmpForm.department;
-            if (batchEmpForm.entry_date) updateData.entry_date = batchEmpForm.entry_date;
-
-            const { error } = await supabase.from('employees').update(updateData).in('id', ids);
-            if (error) throw error;
-            ElMessage.success('成功修改' + ids.length + '条记录');
+            const ids = selectedEmpRows.value.map(x => x.id);
+            const up = {};
+            if (batchEmpForm.department) up.department = batchEmpForm.department;
+            if (batchEmpForm.entry_date) up.entry_date = batchEmpForm.entry_date;
+            await supabase.from('employees').update(up).in('id', ids);
+            ElMessage.success('批量修改成功');
             batchEmpModalShow.value = false;
             loadEmployeeList();
-            selectedEmpRows.value = [];
-          } catch (err) {
-            ElMessage.error('批量修改失败：' + err.message);
-          }
+          } catch (err) { ElMessage.error('失败'); }
         };
-
         const batchDelEmp = async () => {
           try {
-            await ElMessageBox.confirm('确定批量删除选中的员工？', '提示', { type: 'warning' });
-            const ids = selectedEmpRows.value.map(row => row.id);
-            const { error } = await supabase.from('employees').delete().in('id', ids);
-            if (error) throw error;
-            ElMessage.success('成功删除' + ids.length + '条记录');
+            await ElMessageBox.confirm('确定批量删除？');
+            const ids = selectedEmpRows.value.map(x => x.id);
+            await supabase.from('employees').delete().in('id', ids);
+            ElMessage.success('删除成功');
             loadEmployeeList();
-            selectedEmpRows.value = [];
-          } catch (err) {
-            if (err !== 'cancel') ElMessage.error('批量删除失败：' + err.message);
-          }
+          } catch (err) {}
         };
 
         const exportEmpExcel = () => {
-          if (!employeeList.value.length) return ElMessage.warning('暂无数据');
           const ws = XLSX.utils.json_to_sheet(employeeList.value.map(item => ({
-            "姓名": item.name,
-            "身份证号": item.id_card,
-            "部门": item.department,
-            "入职日期": item.entry_date ? item.entry_date.split('T')[0] : ''
+            姓名: item.name, 身份证号: item.id_card, 部门: item.department, 入职日期: item.entry_date?.split('T')[0]
           })));
           const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, '员工档案');
-          XLSX.writeFile(wb, '员工档案_' + new Date().toLocaleDateString() + '.xlsx');
+          XLSX.utils.book_append_sheet(wb, ws, '员工');
+          XLSX.writeFile(wb, '员工档案.xlsx');
           ElMessage.success('导出成功');
         };
-
         const exportEmpExcelTemplate = () => {
-          const templateData = [
-            { "姓名": "张三", "身份证号": "110101199001011234", "部门": "技术部", "入职日期": "2024-01-01" }
-          ];
-          const ws = XLSX.utils.json_to_sheet(templateData);
+          const tmp = [{姓名:'张三',身份证号:'110101199001011234',部门:'技术部',入职日期:'2024-01-01'}];
+          const ws = XLSX.utils.json_to_sheet(tmp);
           const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, '员工档案模板');
-          XLSX.writeFile(wb, '员工档案导入模板_' + new Date().toLocaleDateString() + '.xlsx');
-          ElMessage.success('模板导出成功');
+          XLSX.utils.book_append_sheet(wb, ws, '模板');
+          XLSX.writeFile(wb, '员工模板.xlsx');
         };
-
         const importEmpExcel = async (file) => {
-          try {
-            const fileReader = new FileReader();
-            fileReader.onload = async (e) => {
-              try {
-                const data = e.target.result;
-                const wb = XLSX.read(data, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const excelData = XLSX.utils.sheet_to_json(ws, { header: ['name', 'id_card', 'department', 'entry_date'] });
-                excelData.shift();
-
-                const importList = [];
-                for (const item of excelData) {
-                  if (!item.name || !item.id_card) continue;
-                  importList.push({
-                    name: item.name,
-                    id_card: item.id_card,
-                    department: item.department || '',
-                    entry_date: item.entry_date || ''
-                  });
-                }
-
-                if (importList.length) {
-                  const { error } = await supabase.from('employees').insert(importList);
-                  if (error) throw error;
-                  ElMessage.success('成功导入' + importList.length + '条员工记录');
-                  loadEmployeeList();
-                } else {
-                  ElMessage.warning('无有效数据可导入');
-                }
-              } catch (err) {
-                ElMessage.error('解析Excel失败：' + err.message);
-              }
-            };
-            fileReader.readAsBinaryString(file.raw);
-          } catch (err) {
-            ElMessage.error('导入失败：' + err.message);
-          }
+          const r = new FileReader();
+          r.onload = async e => {
+            const wb = XLSX.read(e.target.result, { type: 'binary' });
+            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            const arr = data.map(x => ({
+              name: x.姓名, id_card: x.身份证号, department: x.部门, entry_date: x.入职日期
+            })).filter(x => x.name && x.id_card);
+            await supabase.from('employees').insert(arr);
+            ElMessage.success('导入成功');
+            loadEmployeeList();
+          };
+          r.readAsBinaryString(file.raw);
         };
 
-        // ===================== 招聘台账模块 =====================
+        // ===================== 招聘模块 =====================
         const recruitList = ref([]);
         const recruitSearch = ref('');
         const recPage = reactive({ current: 1, size: 10 });
         const recTotal = ref(0);
-        const selectedRecRows = ref([]); // 批量选择的招聘数据
+        const selectedRecRows = ref([]);
         
         const recModalShow = ref(false);
         const recModalTitle = ref('新增候选人');
-        const recForm = reactive({ 
-          id: '', name: '', position: '', phone: '', 
-          interview_date: '', expected_salary: '', recruit_status: '待面试' 
-        });
+        const recForm = reactive({ id: '', name: '', position: '', phone: '', interview_date: '', expected_salary: '', recruit_status: '待面试' });
         const recRules = reactive({
-          name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-          position: [{ required: true, message: '请输入应聘职位', trigger: 'blur' }]
+          name: [{ required: true }], position: [{ required: true }]
         });
         const recFormRef = ref(null);
-
         const batchRecModalShow = ref(false);
         const batchRecForm = reactive({ recruit_status: '', interview_date: '' });
-        const batchRecFormRef = ref(null);
 
         const loadRecruitList = async () => {
           loading.value = true;
           try {
-            let query = supabase.from('recruitment').select('*', { count: 'exact' });
+            let q = supabase.from('recruitment').select('*', { count: 'exact' });
             if (recruitSearch.value) {
-              const searchStr = '%' + recruitSearch.value + '%';
-              query = query.or('name.ilike.' + searchStr + ',position.ilike.' + searchStr);
+              const s = '%' + recruitSearch.value + '%';
+              q = q.or('name.ilike.' + s + ',position.ilike.' + s);
             }
-            const from = (recPage.current - 1) * recPage.size;
-            const to = from + recPage.size - 1;
-            query = query.range(from, to);
-
-            const { data, count, error } = await query;
-            if (error) throw error;
+            const f = (recPage.current-1)*recPage.size, t = f+recPage.size-1;
+            const { data, count } = await q.range(f,t);
             recruitList.value = data || [];
             recTotal.value = count || 0;
-          } catch (err) {
-            ElMessage.error('加载招聘数据失败：' + err.message);
-          } finally {
-            loading.value = false;
-          }
+          } catch (err) {} finally { loading.value = false; }
         };
 
         const openRecModal = () => {
           recModalTitle.value = '新增候选人';
-          recForm.id = '';
-          recForm.name = '';
-          recForm.position = '';
-          recForm.phone = '';
-          recForm.interview_date = '';
-          recForm.expected_salary = '';
-          recForm.recruit_status = '待面试';
+          Object.assign(recForm, { id:'', name:'', position:'', phone:'', interview_date:'', expected_salary:'', recruit_status:'待面试' });
           recModalShow.value = true;
         };
-
-        const editRec = (row) => {
+        const editRec = row => {
           recModalTitle.value = '编辑候选人';
-          recForm.id = row.id;
-          recForm.name = row.name;
-          recForm.position = row.position;
-          recForm.phone = row.phone;
-          recForm.interview_date = row.interview_date ? row.interview_date.split('T')[0] : '';
-          recForm.expected_salary = row.expected_salary;
-          recForm.recruit_status = row.recruit_status || '待面试';
+          Object.assign(recForm, row);
+          recForm.interview_date = row.interview_date?.split('T')[0] || '';
           recModalShow.value = true;
         };
-
         const saveRec = async () => {
           try {
             await recFormRef.value.validate();
-            const recData = {
-              name: recForm.name,
-              position: recForm.position,
-              phone: recForm.phone,
-              interview_date: recForm.interview_date,
-              expected_salary: Number(recForm.expected_salary) || 0,
-              recruit_status: recForm.recruit_status
-            };
-
-            let error;
-            if (recForm.id) {
-              ({ error } = await supabase.from('recruitment').update(recData).eq('id', recForm.id));
-            } else {
-              ({ error } = await supabase.from('recruitment').insert([recData]));
-            }
-
-            if (error) throw error;
-            ElMessage.success(recForm.id ? '编辑成功' : '新增成功');
+            const d = { name: recForm.name, position: recForm.position, phone: recForm.phone, interview_date: recForm.interview_date, expected_salary: +recForm.expected_salary, recruit_status: recForm.recruit_status };
+            if (recForm.id) await supabase.from('recruitment').update(d).eq('id', recForm.id);
+            else await supabase.from('recruitment').insert([d]);
+            ElMessage.success('保存成功');
             recModalShow.value = false;
             loadRecruitList();
-          } catch (err) {
-            ElMessage.error('保存失败：' + err.message);
-          }
+          } catch (err) {}
         };
-
-        const delRec = async (id) => {
+        const delRec = async id => {
           try {
-            await ElMessageBox.confirm('确定删除该候选人？', '提示', { type: 'warning' });
-            const { error } = await supabase.from('recruitment').delete().eq('id', id);
-            if (error) throw error;
+            await ElMessageBox.confirm('确定删除？');
+            await supabase.from('recruitment').delete().eq('id', id);
             ElMessage.success('删除成功');
             loadRecruitList();
-          } catch (err) {
-            if (err !== 'cancel') ElMessage.error('删除失败：' + err.message);
-          }
+          } catch (err) {}
         };
-
-        const batchEditRec = () => {
-          batchRecModalShow.value = true;
-          batchRecForm.recruit_status = '';
-          batchRecForm.interview_date = '';
-        };
-
+        const batchEditRec = () => { batchRecModalShow.value = true; };
         const saveBatchRec = async () => {
-          try {
-            const ids = selectedRecRows.value.map(row => row.id);
-            const updateData = {};
-            if (batchRecForm.recruit_status) updateData.recruit_status = batchRecForm.recruit_status;
-            if (batchRecForm.interview_date) updateData.interview_date = batchRecForm.interview_date;
-
-            const { error } = await supabase.from('recruitment').update(updateData).in('id', ids);
-            if (error) throw error;
-            ElMessage.success('成功修改' + ids.length + '条记录');
-            batchRecModalShow.value = false;
-            loadRecruitList();
-            selectedRecRows.value = [];
-          } catch (err) {
-            ElMessage.error('批量修改失败：' + err.message);
-          }
+          const ids = selectedRecRows.value.map(x => x.id);
+          const up = {};
+          if (batchRecForm.recruit_status) up.recruit_status = batchRecForm.recruit_status;
+          if (batchRecForm.interview_date) up.interview_date = batchRecForm.interview_date;
+          await supabase.from('recruitment').update(up).in('id', ids);
+          ElMessage.success('批量修改成功');
+          batchRecModalShow.value = false;
+          loadRecruitList();
         };
-
         const batchDelRec = async () => {
-          try {
-            await ElMessageBox.confirm('确定批量删除选中的候选人？', '提示', { type: 'warning' });
-            const ids = selectedRecRows.value.map(row => row.id);
-            const { error } = await supabase.from('recruitment').delete().in('id', ids);
-            if (error) throw error;
-            ElMessage.success('成功删除' + ids.length + '条记录');
-            loadRecruitList();
-            selectedRecRows.value = [];
-          } catch (err) {
-            if (err !== 'cancel') ElMessage.error('批量删除失败：' + err.message);
-          }
+          await ElMessageBox.confirm('确定删除？');
+          const ids = selectedRecRows.value.map(x => x.id);
+          await supabase.from('recruitment').delete().in('id', ids);
+          ElMessage.success('删除成功');
+          loadRecruitList();
         };
-
         const exportRecExcel = () => {
-          if (!recruitList.value.length) return ElMessage.warning('暂无数据');
-          const ws = XLSX.utils.json_to_sheet(recruitList.value.map(item => ({
-            "姓名": item.name,
-            "应聘职位": item.position,
-            "手机号": item.phone,
-            "面试时间": item.interview_date ? item.interview_date.split('T')[0] : '',
-            "薪资期望": item.expected_salary ? '¥' + item.expected_salary : '',
-            "招聘状态": item.recruit_status
+          const ws = XLSX.utils.json_to_sheet(recruitList.value.map(x => ({
+            姓名:x.name,应聘职位:x.position,手机号:x.phone,面试时间:x.interview_date?.split('T')[0],薪资期望:x.expected_salary,招聘状态:x.recruit_status
           })));
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, '招聘台账');
-          XLSX.writeFile(wb, '招聘台账_' + new Date().toLocaleDateString() + '.xlsx');
-          ElMessage.success('导出成功');
+          const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'招聘'); XLSX.writeFile(wb,'招聘台账.xlsx'); ElMessage.success('导出成功');
         };
-
         const exportRecExcelTemplate = () => {
-          const templateData = [
-            { "姓名": "赵六", "应聘职位": "前端开发", "手机号": "13800138000", "面试时间": "2026-03-20", "薪资期望": 15000, "招聘状态": "待面试" }
-          ];
-          const ws = XLSX.utils.json_to_sheet(templateData);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, '招聘台账模板');
-          XLSX.writeFile(wb, '招聘台账导入模板_' + new Date().toLocaleDateString() + '.xlsx');
-          ElMessage.success('模板导出成功');
+          const tmp = [{姓名:'赵六',应聘职位:'前端',手机号:'13800138000',面试时间:'2026-03-20',薪资期望:15000,招聘状态:'待面试'}];
+          const ws = XLSX.utils.json_to_sheet(tmp); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'模板'); XLSX.writeFile(wb,'招聘模板.xlsx');
+        };
+        const importRecExcel = async file => {
+          const r = new FileReader(); r.onload = async e=>{
+            const wb = XLSX.read(e.target.result,{type:'binary'});
+            const arr = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map(x=>({
+              name:x.姓名, position:x.应聘职位, phone:x.手机号, interview_date:x.面试时间, expected_salary:+x.薪资期望||0, recruit_status:x.招聘状态||'待面试'
+            })).filter(x=>x.name&&x.position);
+            await supabase.from('recruitment').insert(arr); ElMessage.success('导入成功'); loadRecruitList();
+          }; r.readAsBinaryString(file.raw);
         };
 
-        const importRecExcel = async (file) => {
-          try {
-            const fileReader = new FileReader();
-            fileReader.onload = async (e) => {
-              try {
-                const data = e.target.result;
-                const wb = XLSX.read(data, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const excelData = XLSX.utils.sheet_to_json(ws, { header: ['name', 'position', 'phone', 'interview_date', 'expected_salary', 'recruit_status'] });
-                excelData.shift();
-
-                const importList = [];
-                for (const item of excelData) {
-                  if (!item.name || !item.position) continue;
-                  importList.push({
-                    name: item.name,
-                    position: item.position,
-                    phone: item.phone || '',
-                    interview_date: item.interview_date || '',
-                    expected_salary: Number(item.expected_salary) || 0,
-                    recruit_status: item.recruit_status || '待面试'
-                  });
-                }
-
-                if (importList.length) {
-                  const { error } = await supabase.from('recruitment').insert(importList);
-                  if (error) throw error;
-                  ElMessage.success('成功导入' + importList.length + '条招聘记录');
-                  loadRecruitList();
-                } else {
-                  ElMessage.warning('无有效数据可导入');
-                }
-              } catch (err) {
-                ElMessage.error('解析Excel失败：' + err.message);
-              }
-            };
-            fileReader.readAsBinaryString(file.raw);
-          } catch (err) {
-            ElMessage.error('导入失败：' + err.message);
-          }
-        };
-
-        // ===================== 培训记录模块 =====================
+        // ===================== 培训模块 =====================
         const trainList = ref([]);
         const trainSearch = ref('');
-        const trainPage = reactive({ current: 1, size: 10 });
+        const trainPage = reactive({ current:1, size:10 });
         const trainTotal = ref(0);
-        const selectedTrainRows = ref([]); // 批量选择的培训数据
+        const selectedTrainRows = ref([]);
         
         const trainModalShow = ref(false);
-        const trainModalTitle = ref('新增培训记录');
-        const trainForm = reactive({ 
-          id: '', employee_id: '', employee_name: '', 
-          course_id: '', attendance: '出勤', training_hours: 0, training_type: '内部培训' 
-        });
-        const trainRules = reactive({
-          employee_name: [{ required: true, message: '请选择员工姓名', trigger: 'change' }],
-          course_id: [{ required: true, message: '请输入课程ID/名称', trigger: 'blur' }],
-          training_hours: [{ required: true, message: '请输入培训时长', trigger: 'blur', type: 'number' }]
-        });
+        const trainModalTitle = ref('新增培训');
+        const trainForm = reactive({ id:'', employee_id:'', employee_name:'', course_id:'', attendance:'出勤', training_hours:0, training_type:'内部培训' });
+        const trainRules = reactive({ employee_name:[{required:true}], course_id:[{required:true}], training_hours:[{required:true}] });
         const trainFormRef = ref(null);
-
         const batchTrainModalShow = ref(false);
-        const batchTrainForm = reactive({ attendance: '', training_hours: 0, training_type: '' });
-        const batchTrainFormRef = ref(null);
+        const batchTrainForm = reactive({ attendance:'', training_hours:0, training_type:'' });
 
         const loadTrainList = async () => {
           loading.value = true;
-          try {
-            let query = supabase.from('training_records').select('*', { count: 'exact' });
-            if (trainSearch.value) {
-              const searchStr = '%' + trainSearch.value + '%';
-              query = query.or('employee_name.ilike.' + searchStr + ',course_id.ilike.' + searchStr);
-            }
-            const from = (trainPage.current - 1) * trainPage.size;
-            const to = from + trainPage.size - 1;
-            query = query.range(from, to);
-
-            const { data, count, error } = await query;
-            if (error) throw error;
-            trainList.value = data || [];
-            trainTotal.value = count || 0;
-          } catch (err) {
-            ElMessage.error('加载培训数据失败：' + err.message);
-          } finally {
-            loading.value = false;
-          }
+          let q = supabase.from('training_records').select('*',{count:'exact'});
+          if (trainSearch.value) { const s='%'+trainSearch.value+'%'; q=q.or('employee_name.ilike.'+s+',course_id.ilike.'+s); }
+          const f=(trainPage.current-1)*trainPage.size, t=f+trainPage.size-1;
+          const {data,count} = await q.range(f,t);
+          trainList.value = data||[]; trainTotal.value=count||0;
+          loading.value=false;
         };
-
         const handleEmpNameChange = () => {
-          const emp = employeeList.value.find(item => item.name === trainForm.employee_name);
-          if (emp) {
-            trainForm.employee_id = emp.id;
-          }
+          const emp = employeeList.value.find(e=>e.name===trainForm.employee_name);
+          if (emp) trainForm.employee_id = emp.id;
         };
-
         const openTrainModal = () => {
-          trainModalTitle.value = '新增培训记录';
-          trainForm.id = '';
-          trainForm.employee_id = '';
-          trainForm.employee_name = '';
-          trainForm.course_id = '';
-          trainForm.attendance = '出勤';
-          trainForm.training_hours = 0;
-          trainForm.training_type = '内部培训';
-          trainModalShow.value = true;
+          trainModalTitle.value='新增培训记录';
+          Object.assign(trainForm,{id:'',employee_id:'',employee_name:'',course_id:'',attendance:'出勤',training_hours:0,training_type:'内部培训'});
+          trainModalShow.value=true;
         };
-
-        const editTrain = (row) => {
-          trainModalTitle.value = '编辑培训记录';
-          trainForm.id = row.id;
-          trainForm.employee_id = row.employee_id;
-          trainForm.employee_name = row.employee_name;
-          trainForm.course_id = row.course_id;
-          trainForm.attendance = row.attendance;
-          trainForm.training_hours = row.training_hours || 0;
-          trainForm.training_type = row.training_type || '内部培训';
-          trainModalShow.value = true;
+        const editTrain = row => {
+          trainModalTitle.value='编辑培训'; Object.assign(trainForm,row); trainModalShow.value=true;
         };
-
         const saveTrain = async () => {
           try {
             await trainFormRef.value.validate();
-            // 确保employee_id有值
-            if (!trainForm.employee_id) {
-              const emp = employeeList.value.find(item => item.name === trainForm.employee_name);
-              if (emp) {
-                trainForm.employee_id = emp.id;
-              } else {
-                throw new Error('未找到该员工，请重新选择');
-              }
-            }
-            
-            const trainData = {
-              employee_id: trainForm.employee_id,
-              employee_name: trainForm.employee_name,
-              course_id: trainForm.course_id,
-              attendance: trainForm.attendance,
-              training_hours: Number(trainForm.training_hours) || 0,
-              training_type: trainForm.training_type
-            };
-
-            let error;
-            if (trainForm.id) {
-              ({ error } = await supabase.from('training_records').update(trainData).eq('id', trainForm.id));
-            } else {
-              ({ error } = await supabase.from('training_records').insert([trainData]));
-            }
-
-            if (error) throw error;
-            ElMessage.success(trainForm.id ? '编辑成功' : '新增成功');
-            trainModalShow.value = false;
-            loadTrainList();
-          } catch (err) {
-            ElMessage.error('保存失败：' + err.message);
-          }
+            if (!trainForm.employee_id) { const emp=employeeList.value.find(e=>e.name===trainForm.employee_name); if (emp) trainForm.employee_id=emp.id; }
+            const d={employee_id:trainForm.employee_id,employee_name:trainForm.employee_name,course_id:trainForm.course_id,attendance:trainForm.attendance,training_hours:+trainForm.training_hours,training_type:trainForm.training_type};
+            if (trainForm.id) await supabase.from('training_records').update(d).eq('id',trainForm.id);
+            else await supabase.from('training_records').insert([d]);
+            ElMessage.success('保存成功'); trainModalShow.value=false; loadTrainList();
+          } catch(err){}
         };
-
-        const delTrain = async (id) => {
-          try {
-            await ElMessageBox.confirm('确定删除该培训记录？', '提示', { type: 'warning' });
-            const { error } = await supabase.from('training_records').delete().eq('id', id);
-            if (error) throw error;
-            ElMessage.success('删除成功');
-            loadTrainList();
-          } catch (err) {
-            if (err !== 'cancel') ElMessage.error('删除失败：' + err.message);
-          }
+        const delTrain = async id => {
+          await ElMessageBox.confirm('确定删除？'); await supabase.from('training_records').delete().eq('id',id); ElMessage.success('删除成功'); loadTrainList();
         };
-
-        const batchEditTrain = () => {
-          batchTrainModalShow.value = true;
-          batchTrainForm.attendance = '';
-          batchTrainForm.training_hours = 0;
-          batchTrainForm.training_type = '';
-        };
-
+        const batchEditTrain = () => { batchTrainModalShow.value=true; };
         const saveBatchTrain = async () => {
-          try {
-            const ids = selectedTrainRows.value.map(row => row.id);
-            const updateData = {};
-            if (batchTrainForm.attendance) updateData.attendance = batchTrainForm.attendance;
-            if (batchTrainForm.training_hours) updateData.training_hours = Number(batchTrainForm.training_hours);
-            if (batchTrainForm.training_type) updateData.training_type = batchTrainForm.training_type;
-
-            const { error } = await supabase.from('training_records').update(updateData).in('id', ids);
-            if (error) throw error;
-            ElMessage.success('成功修改' + ids.length + '条记录');
-            batchTrainModalShow.value = false;
-            loadTrainList();
-            selectedTrainRows.value = [];
-          } catch (err) {
-            ElMessage.error('批量修改失败：' + err.message);
-          }
+          const ids=selectedTrainRows.value.map(x=>x.id); const up={};
+          if (batchTrainForm.attendance) up.attendance=batchTrainForm.attendance;
+          if (batchTrainForm.training_hours) up.training_hours=+batchTrainForm.training_hours;
+          if (batchTrainForm.training_type) up.training_type=batchTrainForm.training_type;
+          await supabase.from('training_records').update(up).in('id',ids);
+          ElMessage.success('批量修改成功'); batchTrainModalShow.value=false; loadTrainList();
         };
-
         const batchDelTrain = async () => {
-          try {
-            await ElMessageBox.confirm('确定批量删除选中的培训记录？', '提示', { type: 'warning' });
-            const ids = selectedTrainRows.value.map(row => row.id);
-            const { error } = await supabase.from('training_records').delete().in('id', ids);
-            if (error) throw error;
-            ElMessage.success('成功删除' + ids.length + '条记录');
-            loadTrainList();
-            selectedTrainRows.value = [];
-          } catch (err) {
-            if (err !== 'cancel') ElMessage.error('批量删除失败：' + err.message);
-          }
+          await ElMessageBox.confirm('确定删除？'); const ids=selectedTrainRows.value.map(x=>x.id); await supabase.from('training_records').delete().in('id',ids); ElMessage.success('删除成功'); loadTrainList();
         };
-
         const exportTrainExcel = () => {
-          if (!trainList.value.length) return ElMessage.warning('暂无数据');
-          const ws = XLSX.utils.json_to_sheet(trainList.value.map(item => ({
-            "员工姓名": item.employee_name,
-            "课程ID/名称": item.course_id,
-            "考勤状态": item.attendance,
-            "培训时长(小时)": item.training_hours,
-            "培训类型": item.training_type
-          })));
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, '培训记录');
-          XLSX.writeFile(wb, '培训记录_' + new Date().toLocaleDateString() + '.xlsx');
-          ElMessage.success('导出成功');
+          const ws=XLSX.utils.json_to_sheet(trainList.value.map(x=>({
+            员工姓名:x.employee_name,课程ID:x.course_id,考勤状态:x.attendance,培训时长:x.training_hours,培训类型:x.training_type
+          }))); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'培训'); XLSX.writeFile(wb,'培训记录.xlsx'); ElMessage.success('导出成功');
         };
-
         const exportTrainExcelTemplate = () => {
-          const templateData = [
-            { "员工姓名": "张三", "课程ID/名称": "TR001-前端进阶", "考勤状态": "出勤", "培训时长(小时)": 8, "培训类型": "内部培训" }
-          ];
-          const ws = XLSX.utils.json_to_sheet(templateData);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, '培训记录模板');
-          XLSX.writeFile(wb, '培训记录导入模板_' + new Date().toLocaleDateString() + '.xlsx');
-          ElMessage.success('模板导出成功');
+          const tmp=[{员工姓名:'张三',课程ID:'TR001',考勤状态:'出勤',培训时长:8,培训类型:'内部培训'}];
+          const ws=XLSX.utils.json_to_sheet(tmp); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'模板'); XLSX.writeFile(wb,'培训模板.xlsx');
+        };
+        const importTrainExcel = async file => {
+          const r=new FileReader(); r.onload=async e=>{
+            const wb=XLSX.read(e.target.result,{type:'binary'});
+            const arr=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map(x=>{
+              const emp=employeeList.value.find(e=>e.name===x.员工姓名);
+              if (!emp) return null;
+              return {employee_id:emp.id,employee_name:x.员工姓名,course_id:x.课程ID,attendance:x.考勤状态||'出勤',training_hours:+x.培训时长||0,training_type:x.培训类型||'内部培训'};
+            }).filter(Boolean);
+            await supabase.from('training_records').insert(arr); ElMessage.success('导入成功'); loadTrainList();
+          }; r.readAsBinaryString(file.raw);
         };
 
-        const importTrainExcel = async (file) => {
-          try {
-            const fileReader = new FileReader();
-            fileReader.onload = async (e) => {
-              try {
-                const data = e.target.result;
-                const wb = XLSX.read(data, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const excelData = XLSX.utils.sheet_to_json(ws, { header: ['employee_name', 'course_id', 'attendance', 'training_hours', 'training_type'] });
-                excelData.shift();
-
-                const importList = [];
-                for (const item of excelData) {
-                  if (!item.employee_name) continue;
-                  const emp = employeeList.value.find(empItem => empItem.name === item.employee_name);
-                  if (!emp) continue;
-                  importList.push({
-                    employee_id: emp.id,
-                    employee_name: item.employee_name,
-                    course_id: item.course_id || '',
-                    attendance: item.attendance || '出勤',
-                    training_hours: Number(item.training_hours) || 0,
-                    training_type: item.training_type || '内部培训'
-                  });
-                }
-
-                if (importList.length) {
-                  const { error } = await supabase.from('training_records').insert(importList);
-                  if (error) throw error;
-                  ElMessage.success('成功导入' + importList.length + '条培训记录');
-                  loadTrainList();
-                } else {
-                  ElMessage.warning('无有效数据可导入（请检查员工姓名是否存在）');
-                }
-              } catch (err) {
-                ElMessage.error('解析Excel失败：' + err.message);
-              }
-            };
-            fileReader.readAsBinaryString(file.raw);
-          } catch (err) {
-            ElMessage.error('导入失败：' + err.message);
-          }
-        };
-
-        // ===================== 通用方法 =====================
+        // ===================== 登录：查SQL表，无硬编码 =====================
         const handleLogin = async () => {
           try {
             loading.value = true;
             await loginFormRef.value.validate();
-            if (loginForm.username === 'admin' && loginForm.password === '123456') {
-              isLogin.value = true;
-              ElMessage.success('登录成功');
-              setTimeout(() => {
-                loadEmployeeList();
-                loadRecruitList();
-                loadTrainList();
-              }, 500);
-            } else {
-              ElMessage.error('账号或密码错误');
-            }
+            const { data, error } = await supabase
+              .from('system_users')
+              .select('*')
+              .eq('username', loginForm.username)
+              .eq('password', loginForm.password)
+              .single();
+            if (error || !data) throw new Error('账号或密码错误');
+            isLogin.value = true;
+            ElMessage.success('登录成功');
+            setTimeout(()=>{
+              loadEmployeeList();
+              loadRecruitList();
+              loadTrainList();
+            },500);
           } catch (err) {
-            ElMessage.error('登录失败：' + err.message);
+            ElMessage.error(err.message);
           } finally {
             loading.value = false;
           }
         };
 
-        const handleLogout = () => {
-          isLogin.value = false;
-          ElMessage.info('已退出登录');
-        };
-
-        const handleTabChange = (tabIndex) => {
-          activeTab.value = tabIndex;
-          switch (tabIndex) {
-            case 'employee':
-              loadEmployeeList();
-              break;
-            case 'recruit':
-              loadRecruitList();
-              break;
-            case 'training':
-              loadTrainList();
-              break;
-            case 'logout':
-              handleLogout();
-              break;
-          }
+        const handleLogout = () => { isLogin.value = false; ElMessage.info('已退出'); };
+        const handleTabChange = i => {
+          activeTab.value = i;
+          if(i==='employee') loadEmployeeList();
+          if(i==='recruit') loadRecruitList();
+          if(i==='training') loadTrainList();
+          if(i==='logout') handleLogout();
         };
 
         return {
           isLogin, loading, activeTab,
-          loginForm, loginRules, loginFormRef, handleLogin,
+          loginForm, loginRules, loginFormRef, handleLogin, handleLogout, handleTabChange,
           employeeList, employeeSearch, empPage, empTotal, selectedEmpRows,
           empModalShow, empModalTitle, empForm, empRules, empFormRef,
           loadEmployeeList, openEmpModal, editEmp, saveEmp, delEmp,
-          batchEmpModalShow, batchEmpForm, batchEmpFormRef,
-          batchEditEmp, saveBatchEmp, batchDelEmp,
+          batchEmpModalShow, batchEmpForm, batchEditEmp, saveBatchEmp, batchDelEmp,
           exportEmpExcel, exportEmpExcelTemplate, importEmpExcel,
           recruitList, recruitSearch, recPage, recTotal, selectedRecRows,
           recModalShow, recModalTitle, recForm, recRules, recFormRef,
           loadRecruitList, openRecModal, editRec, saveRec, delRec,
-          batchRecModalShow, batchRecForm, batchRecFormRef,
-          batchEditRec, saveBatchRec, batchDelRec,
+          batchRecModalShow, batchRecForm, batchEditRec, saveBatchRec, batchDelRec,
           exportRecExcel, exportRecExcelTemplate, importRecExcel,
           trainList, trainSearch, trainPage, trainTotal, selectedTrainRows,
           trainModalShow, trainModalTitle, trainForm, trainRules, trainFormRef,
-          loadTrainList, openTrainModal, editTrain, saveTrain, delTrain,
-          batchTrainModalShow, batchTrainForm, batchTrainFormRef,
-          batchEditTrain, saveBatchTrain, batchDelTrain,
-          exportTrainExcel, exportTrainExcelTemplate, importTrainExcel,
-          handleEmpNameChange,
-          handleLogout, handleTabChange
+          loadTrainList, handleEmpNameChange, openTrainModal, editTrain, saveTrain, delTrain,
+          batchTrainModalShow, batchTrainForm, batchEditTrain, saveBatchTrain, batchDelTrain,
+          exportTrainExcel, exportTrainExcelTemplate, importTrainExcel
         };
       }
     }).use(ElementPlus).mount('#app');
