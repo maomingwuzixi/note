@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HR台账管理系统（完整版+扩展功能）</title>
+  <title>HR台账管理系统（完整版）</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css">
   <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/element-plus/dist/index.full.js"></script>
@@ -54,7 +54,7 @@
         <el-menu-item index="logout" @click="handleLogout" style="margin-left: auto;">退出登录</el-menu-item>
       </el-menu>
 
-      <!-- ===================== 员工档案台账 ===================== -->
+      <!-- 员工档案台账 -->
       <div v-show="activeTab === 'employee'">
         <el-card shadow="hover">
           <template #header>
@@ -157,7 +157,7 @@
         </template>
       </el-dialog>
 
-      <!-- ===================== 招聘台账 ===================== -->
+      <!-- 招聘台账 -->
       <div v-show="activeTab === 'recruit'">
         <el-card shadow="hover">
           <template #header>
@@ -288,7 +288,7 @@
         </template>
       </el-dialog>
 
-      <!-- ===================== 培训记录台账 ===================== -->
+      <!-- 培训记录台账 -->
       <div v-show="activeTab === 'training'">
         <el-card shadow="hover">
           <template #header>
@@ -435,7 +435,6 @@
 
     createApp({
       setup() {
-        // ===================== 基础配置 =====================
         // Supabase初始化
         const supabase = window.supabase.createClient(
           'https://fgscptvyyxhqkbpriukq.supabase.co',
@@ -461,13 +460,11 @@
         const loginFormRef = ref(null);
 
         // ===================== 员工档案模块 =====================
-        // 基础数据
         const employeeList = ref([]);
         const employeeSearch = ref('');
         const empPage = reactive({ current: 1, size: 10 });
         const empTotal = ref(0);
         
-        // 弹窗相关
         const empModalShow = ref(false);
         const empModalTitle = ref('新增员工');
         const empForm = reactive({ id: '', name: '', id_card: '', department: '', entry_date: '' });
@@ -507,12 +504,10 @@
           }
         };
 
-        // 选择员工行
         const handleEmpSelectionChange = (val) => {
           selectedEmpRows.value = val;
         };
 
-        // 打开员工弹窗
         const openEmpModal = () => {
           empModalTitle.value = '新增员工';
           empForm.id = '';
@@ -523,7 +518,6 @@
           empModalShow.value = true;
         };
 
-        // 编辑员工
         const editEmp = (row) => {
           empModalTitle.value = '编辑员工';
           empForm.id = row.id;
@@ -534,7 +528,6 @@
           empModalShow.value = true;
         };
 
-        // 保存员工
         const saveEmp = async () => {
           try {
             await empFormRef.value.validate();
@@ -561,7 +554,6 @@
           }
         };
 
-        // 删除员工
         const delEmp = async (id) => {
           try {
             await ElMessageBox.confirm('确定删除该员工？', '提示', { type: 'warning' });
@@ -574,14 +566,12 @@
           }
         };
 
-        // 批量编辑员工
         const batchEditEmp = () => {
           batchEmpModalShow.value = true;
           batchEmpForm.department = '';
           batchEmpForm.entry_date = '';
         };
 
-        // 保存批量编辑员工
         const saveBatchEmp = async () => {
           try {
             const ids = selectedEmpRows.value.map(row => row.id);
@@ -600,7 +590,6 @@
           }
         };
 
-        // 批量删除员工
         const batchDelEmp = async () => {
           try {
             await ElMessageBox.confirm('确定批量删除选中的员工？', '提示', { type: 'warning' });
@@ -615,7 +604,6 @@
           }
         };
 
-        // 导出员工Excel
         const exportEmpExcel = () => {
           if (!employeeList.value.length) return ElMessage.warning('暂无数据');
           const ws = XLSX.utils.json_to_sheet(employeeList.value.map(item => ({
@@ -630,7 +618,6 @@
           ElMessage.success('导出成功');
         };
 
-        // 导出员工模板
         const exportEmpExcelTemplate = () => {
           const templateData = [
             { '姓名': '张三', '身份证号': '110101199001011234', '部门': '技术部', '入职日期': '2024-01-01' }
@@ -642,7 +629,6 @@
           ElMessage.success('模板导出成功');
         };
 
-        // 导入员工Excel
         const importEmpExcel = async (file) => {
           try {
             const fileReader = new FileReader();
@@ -685,13 +671,11 @@
         };
 
         // ===================== 招聘台账模块 =====================
-        // 基础数据
         const recruitList = ref([]);
         const recruitSearch = ref('');
         const recPage = reactive({ current: 1, size: 10 });
         const recTotal = ref(0);
         
-        // 弹窗相关
         const recModalShow = ref(false);
         const recModalTitle = ref('新增候选人');
         const recForm = reactive({ 
@@ -704,13 +688,11 @@
         });
         const recFormRef = ref(null);
 
-        // 批量操作
         const selectedRecRows = ref([]);
         const batchRecModalShow = ref(false);
         const batchRecForm = reactive({ recruit_status: '', interview_date: '' });
         const batchRecFormRef = ref(null);
 
-        // 加载招聘数据
         const loadRecruitList = async () => {
           loading.value = true;
           try {
@@ -733,12 +715,10 @@
           }
         };
 
-        // 选择招聘行
         const handleRecSelectionChange = (val) => {
           selectedRecRows.value = val;
         };
 
-        // 打开招聘弹窗
         const openRecModal = () => {
           recModalTitle.value = '新增候选人';
           recForm.id = '';
@@ -751,7 +731,6 @@
           recModalShow.value = true;
         };
 
-        // 编辑招聘
         const editRec = (row) => {
           recModalTitle.value = '编辑候选人';
           recForm.id = row.id;
@@ -764,7 +743,6 @@
           recModalShow.value = true;
         };
 
-        // 保存招聘
         const saveRec = async () => {
           try {
             await recFormRef.value.validate();
@@ -793,7 +771,6 @@
           }
         };
 
-        // 删除招聘
         const delRec = async (id) => {
           try {
             await ElMessageBox.confirm('确定删除该候选人？', '提示', { type: 'warning' });
@@ -806,14 +783,12 @@
           }
         };
 
-        // 批量编辑招聘
         const batchEditRec = () => {
           batchRecModalShow.value = true;
           batchRecForm.recruit_status = '';
           batchRecForm.interview_date = '';
         };
 
-        // 保存批量编辑招聘
         const saveBatchRec = async () => {
           try {
             const ids = selectedRecRows.value.map(row => row.id);
@@ -832,7 +807,6 @@
           }
         };
 
-        // 批量删除招聘
         const batchDelRec = async () => {
           try {
             await ElMessageBox.confirm('确定批量删除选中的候选人？', '提示', { type: 'warning' });
@@ -847,7 +821,6 @@
           }
         };
 
-        // 导出招聘Excel
         const exportRecExcel = () => {
           if (!recruitList.value.length) return ElMessage.warning('暂无数据');
           const ws = XLSX.utils.json_to_sheet(recruitList.value.map(item => ({
@@ -864,7 +837,6 @@
           ElMessage.success('导出成功');
         };
 
-        // 导出招聘模板
         const exportRecExcelTemplate = () => {
           const templateData = [
             { '姓名': '赵六', '应聘职位': '前端开发', '手机号': '13800138000', '面试时间': '2026-03-20', '薪资期望': 15000, '招聘状态': '待面试' }
@@ -876,7 +848,6 @@
           ElMessage.success('模板导出成功');
         };
 
-        // 导入招聘Excel
         const importRecExcel = async (file) => {
           try {
             const fileReader = new FileReader();
@@ -921,13 +892,11 @@
         };
 
         // ===================== 培训记录模块 =====================
-        // 基础数据
         const trainList = ref([]);
         const trainSearch = ref('');
         const trainPage = reactive({ current: 1, size: 10 });
         const trainTotal = ref(0);
         
-        // 弹窗相关
         const trainModalShow = ref(false);
         const trainModalTitle = ref('新增培训记录');
         const trainForm = reactive({ 
@@ -941,13 +910,11 @@
         });
         const trainFormRef = ref(null);
 
-        // 批量操作
         const selectedTrainRows = ref([]);
         const batchTrainModalShow = ref(false);
         const batchTrainForm = reactive({ attendance: '', training_hours: 0, training_type: '' });
         const batchTrainFormRef = ref(null);
 
-        // 加载培训数据
         const loadTrainList = async () => {
           loading.value = true;
           try {
@@ -970,12 +937,10 @@
           }
         };
 
-        // 选择培训行
         const handleTrainSelectionChange = (val) => {
           selectedTrainRows.value = val;
         };
 
-        // 员工姓名选择后关联ID
         const handleEmpNameChange = () => {
           const emp = employeeList.value.find(item => item.name === trainForm.employee_name);
           if (emp) {
@@ -983,7 +948,6 @@
           }
         };
 
-        // 打开培训弹窗
         const openTrainModal = () => {
           trainModalTitle.value = '新增培训记录';
           trainForm.id = '';
@@ -996,7 +960,6 @@
           trainModalShow.value = true;
         };
 
-        // 编辑培训
         const editTrain = (row) => {
           trainModalTitle.value = '编辑培训记录';
           trainForm.id = row.id;
@@ -1009,7 +972,6 @@
           trainModalShow.value = true;
         };
 
-        // 保存培训
         const saveTrain = async () => {
           try {
             await trainFormRef.value.validate();
@@ -1038,7 +1000,6 @@
           }
         };
 
-        // 删除培训
         const delTrain = async (id) => {
           try {
             await ElMessageBox.confirm('确定删除该培训记录？', '提示', { type: 'warning' });
@@ -1051,7 +1012,6 @@
           }
         };
 
-        // 批量编辑培训
         const batchEditTrain = () => {
           batchTrainModalShow.value = true;
           batchTrainForm.attendance = '';
@@ -1059,7 +1019,6 @@
           batchTrainForm.training_type = '';
         };
 
-        // 保存批量编辑培训
         const saveBatchTrain = async () => {
           try {
             const ids = selectedTrainRows.value.map(row => row.id);
@@ -1079,7 +1038,6 @@
           }
         };
 
-        // 批量删除培训
         const batchDelTrain = async () => {
           try {
             await ElMessageBox.confirm('确定批量删除选中的培训记录？', '提示', { type: 'warning' });
@@ -1094,7 +1052,6 @@
           }
         };
 
-        // 导出培训Excel
         const exportTrainExcel = () => {
           if (!trainList.value.length) return ElMessage.warning('暂无数据');
           const ws = XLSX.utils.json_to_sheet(trainList.value.map(item => ({
@@ -1110,7 +1067,6 @@
           ElMessage.success('导出成功');
         };
 
-        // 导出培训模板
         const exportTrainExcelTemplate = () => {
           const templateData = [
             { '员工姓名': '张三', '课程ID/名称': 'TR001-前端进阶', '考勤状态': '出勤', '培训时长（小时）': 8, '培训类型': '内部培训' }
@@ -1122,7 +1078,6 @@
           ElMessage.success('模板导出成功');
         };
 
-        // 导入培训Excel
         const importTrainExcel = async (file) => {
           try {
             const fileReader = new FileReader();
@@ -1169,7 +1124,6 @@
         };
 
         // ===================== 通用方法 =====================
-        // 登录
         const handleLogin = async () => {
           try {
             loading.value = true;
@@ -1192,13 +1146,11 @@
           }
         };
 
-        // 退出登录
         const handleLogout = () => {
           isLogin.value = false;
           ElMessage.info('已退出登录');
         };
 
-        // 标签切换
         const handleTabChange = (tabIndex) => {
           activeTab.value = tabIndex;
           switch (tabIndex) {
@@ -1217,27 +1169,21 @@
           }
         };
 
-        // 返回所有变量和方法
         return {
-          // 基础状态
           isLogin, loading, activeTab,
-          // 登录
           loginForm, loginRules, loginFormRef, handleLogin,
-          // 员工档案
           employeeList, employeeSearch, empPage, empTotal,
           empModalShow, empModalTitle, empForm, empRules, empFormRef,
           loadEmployeeList, openEmpModal, editEmp, saveEmp, delEmp,
           selectedEmpRows, batchEmpModalShow, batchEmpForm, batchEmpFormRef,
           batchEditEmp, saveBatchEmp, batchDelEmp,
           exportEmpExcel, exportEmpExcelTemplate, importEmpExcel,
-          // 招聘台账
           recruitList, recruitSearch, recPage, recTotal,
           recModalShow, recModalTitle, recForm, recRules, recFormRef,
           loadRecruitList, openRecModal, editRec, saveRec, delRec,
           selectedRecRows, batchRecModalShow, batchRecForm, batchRecFormRef,
           batchEditRec, saveBatchRec, batchDelRec,
           exportRecExcel, exportRecExcelTemplate, importRecExcel,
-          // 培训记录
           trainList, trainSearch, trainPage, trainTotal,
           trainModalShow, trainModalTitle, trainForm, trainRules, trainFormRef,
           loadTrainList, openTrainModal, editTrain, saveTrain, delTrain,
@@ -1245,7 +1191,6 @@
           batchEditTrain, saveBatchTrain, batchDelTrain,
           exportTrainExcel, exportTrainExcelTemplate, importTrainExcel,
           handleEmpNameChange,
-          // 通用
           handleLogout, handleTabChange
         };
       }
