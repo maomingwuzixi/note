@@ -48,7 +48,7 @@
         <el-menu-item index="employee">员工档案</el-menu-item>
         <el-menu-item index="recruit">招聘台账</el-menu-item>
         <el-menu-item index="training">培训记录</el-menu-item>
-        <el-menu-item index="logout" @click="handleLogout" style="margin-left: auto;">退出登录</el-menu-item>
+        <el-menu-item index="logout" style="margin-left: auto;">退出登录</el-menu-item>
       </el-menu>
 
       <!-- 员工档案 -->
@@ -426,6 +426,23 @@
   </div>
 
   <script>
+    // ========== Supabase 永久保活防休眠 心跳【全自动】 ==========
+    const supabaseKeepAlive = window.supabase.createClient(
+      'https://fgscptvyyxhqkbpriukq.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnc2NwdHZ5eXhocWticHJpdWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDg4NDEsImV4cCI6MjA4OTIyNDg0MX0.else3hnnFpVh3j2wfS7vY4ku9xneQ5mh9sEcVUjrH5s'
+    );
+    async function keepAlive() {
+      try {
+        await supabaseKeepAlive.from('employees').select('id').limit(1);
+        console.log('✅ 保活心跳正常，项目已续命');
+      } catch (e) {
+        console.log('❌ 保活失败，项目需手动恢复');
+      }
+    }
+    keepAlive();
+    setInterval(keepAlive, 300000);
+    // ========================================================
+
     const { createApp, ref, reactive } = Vue;
     const { ElMessage, ElMessageBox } = ElementPlus;
 
